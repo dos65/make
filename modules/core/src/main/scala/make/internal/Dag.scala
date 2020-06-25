@@ -68,7 +68,6 @@ object Dag {
     val indexedKeys = asMap.keys.zipWithIndex.toMap
     val indexedMap = indexedKeys.map {case (tag, _) =>
       val entry = asMap(tag)
-      println(entry)
       entry.takes.map(indexedKeys(_)).toList
     }.toList
 
@@ -96,7 +95,6 @@ object Dag {
     }
 
     resourcePipeline.map(all => {
-      println(all)
       all(node.tag.asInstanceOf[NodeTag[Any]])
     }).asInstanceOf[Resource[F, A]]
   }

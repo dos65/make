@@ -1,12 +1,9 @@
-package sdi
+package example
 
-import cats.Monad
 import cats.implicits._
+import cats.effect._
 import cats.effect.implicits._
-import cats.effect.IO
 import cats.effect.IOApp
-import cats.effect.ExitCode
-import scala.concurrent.Future
 
 import make._
 
