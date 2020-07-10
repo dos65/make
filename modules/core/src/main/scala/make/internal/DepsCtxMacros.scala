@@ -1,16 +1,39 @@
 package make.internal
 
-import scala.reflect.macros.blackbox.Context
+//import scala.reflect.macros.blackbox.Context
+import scala.reflect.macros.whitebox.Context
 import make.Make
+
+// class FailedTraces(
+//   var: 
+// )
 
 class DepsCtxMacros(val c: Context) {
 
   import c.universe._
 
+  // private def mkError(failedTpe: Type, path: List[c.ImplicitCandidate]): String = {
+  //   val sb = new StringBuilder()
+  //   // path.reverse.foldLeft(sb){case (acc, candidate) => 
+  //   //   val entry = s"${candidate.}"
+  //   // }
+  //   ???
+  // }
+
   def materializeDeps[F[_], A](implicit ftpe: WeakTypeTag[F[X] forSome {type X}], atpe: WeakTypeTag[A]): c.Expr[Make.DepsCtx[F, A]] = {
     val makeTc = weakTypeOf[Make[F, _]].typeConstructor
     val out = resolveMake(makeTc, ftpe.tpe, atpe.tpe).orElse(tryTuple(makeTc, ftpe.tpe, atpe.tpe))
     
+    // val xxx = c.openImplicits
+    //   .filter(x => {
+    //     val name = x.pt.typeSymbol.fullName
+    //     name == "make.Make.DepsCtx" || name == "make.Make"
+    //   }).map(candidate => {
+    //     candidate.pt.typeArgs
+    //   })
+
+
+    // println("Deps:" + xxx.mkString("\n"))
     out match {
       case Some(tree) =>
         val ctxTree =
@@ -19,7 +42,7 @@ class DepsCtxMacros(val c: Context) {
           """
         c.Expr[Make.DepsCtx[F, A]](ctxTree)
       case None =>
-       c.abort(c.enclosingPosition, s"Can't find `Make` for ${atpe.tpe}")
+        c.abort(c.enclosingPosition, s"Can't find `Make` for ${atpe.tpe}")
     }
   }
 
@@ -60,7 +83,7 @@ class DepsCtxMacros(val c: Context) {
           val make =
            q"""
             new _root_.make.Make[$ftpe, $tpe] {
-              def node: _root_.make.internal.Node[$tpe] = $nodeTree
+              def node: _root_.make.internal.Node[${ftpe}, $tpe] = $nodeTree
             }
             """
           Some(make)

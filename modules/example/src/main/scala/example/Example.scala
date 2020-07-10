@@ -18,7 +18,7 @@ object Example extends IOApp {
   case class Hoho(dep1: Dep1)
   object Hoho {
     implicit def make(implicit mk: Make.DepsCtx[IO, Dep1]): Make[IO, Hoho] =
-      mk.pure(Hoho(_))
+      mk.func(Hoho(_))
   }
 
   case class Yohoho(
@@ -27,11 +27,13 @@ object Example extends IOApp {
   )
   object Yohoho {
     implicit def make(implicit mk: Make.DepsCtx[IO, (Dep1, Hoho)]): Make[IO, Yohoho] =
-      mk.pure{ case (x, y) => Yohoho(x, y) }
+      mk.func{ case (x, y) => Yohoho(x, y) }
   }
 
   override def run(args: List[String]): IO[ExitCode] = {
     implicit val ctx = Make.context[IO]
+
+    implicit val hohoOverride: Make[IO, Hoho] = ctx.pure(Hoho(Dep1("override")))
 
     val resource = Make.inCtx[IO].derive[Yohoho].asResource
     val f = for {

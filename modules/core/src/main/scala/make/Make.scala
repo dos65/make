@@ -9,14 +9,15 @@ import scala.reflect.classTag
 import scala.reflect.ClassTag
 import scala.language.experimental.macros
 import cats.Monad
+import java.util.concurrent.Future
 
 trait Make[F[_], A] {
-  def node: Node[A]
+  def node: Node[F, A]
   final def asResource(implicit x: Monad[F]): Resource[F, A] = internal.Dag.toResource[F, A](node)
 }
 
 object Make {
-
+  
   def context[F[_]: Applicative]: Make.Ctx[F] = new Ctx[F]
 
   def inCtx[F[_]: Make.Ctx]: DerivePartillyApplyed[F] = 
@@ -29,24 +30,24 @@ object Make {
 
   final class Ctx[F[_]: Applicative] {
     def pure[A: NodeTag](v: A): Make[F, A] =
-      createFromNodeUnsafe(Node.Pure(v, NodeTag.of[A]))
+      createFromNodeUnsafe(Node.pure(v))
     
     def effect[A: NodeTag](v: F[A]): Make[F, A] =
-      createFromNodeUnsafe(Node.Eff(Resource.liftF(v), NodeTag.of[A]))
+      createFromNodeUnsafe(Node.eff(v))
     
     def resource[A: NodeTag](v: Resource[F, A]): Make[F, A] =
-      createFromNodeUnsafe(Node.Eff(v, NodeTag.of[A]))
+      createFromNodeUnsafe(Node.resource(v))
   }  
 
   final class DepsCtx[F[_]: Applicative, A](deps: Make[F, A]) {
-    def pure[B: NodeTag](f: A => B): Make[F, B] =
-      createFromNodeUnsafe(Node.Func(deps.node, f, NodeTag.of[B]))
+    def func[B: NodeTag](f: A => B): Make[F, B] =
+      createFromNodeUnsafe(Node.map(deps.node)(f))
 
-    def effect[B: NodeTag](f: A => F[B]): Make[F, B] =
-      createFromNodeUnsafe(Node.EffFunc(deps.node, (a: A) => Resource.liftF(f(a)), NodeTag.of[B]))
+    def funcF[B: NodeTag](f: A => F[B]): Make[F, B] =
+      createFromNodeUnsafe(Node.mapF(deps.node)(f))
 
-    def resource[B: NodeTag](f: A => Resource[F, B]): Make[F, B] =
-      createFromNodeUnsafe(Node.EffFunc(deps.node, f, NodeTag.of[B]))
+    def funcResource[B: NodeTag](f: A => Resource[F, B]): Make[F, B] =
+      createFromNodeUnsafe(Node.mapResource(deps.node)(f))
   }
 
   object DepsCtx {
@@ -55,8 +56,8 @@ object Make {
       macro make.internal.DepsCtxMacros.materializeDeps[F, A]
   }
 
-  def createFromNodeUnsafe[F[_], A](v: Node[A]): Make[F, A] =
+  def createFromNodeUnsafe[F[_], A](v: Node[F, A]): Make[F, A] =
     new Make[F, A] {
-      val node: Node[A] = v
+      val node: Node[F, A] = v
     }
 }

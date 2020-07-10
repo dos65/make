@@ -3,42 +3,42 @@ package make.internal
 import make.Make
 import scala.reflect.{ClassTag, classTag}
 import make.internal.NodeTag.Pos
+import cats.Applicative
 
 object NodeOps {
 
-  def product[A, B](a: Node[A], b: Node[B]): Node[(A, B)] = {
-    Node.Ap(
-      b,
-      Node.Func(a, (a: A) => (b: B) => (a, b), NodeTag.of[B => (A, B)]),
-      NodeTag.of[(A, B)]
+  def product[F[_]: Applicative, A, B](a: Node[F, A], b: Node[F, B]): Node[F, (A, B)] = {
+    Node.ap(b)(Node.map(a)(a => (b: B) => (a, b)))
+  }
+
+  def product[F[_]: Applicative, A, B, C](a: Node[F, A], b: Node[F, B], c: Node[F, C]): Node[F, (A, B, C)] = {
+    Node.ap(c)(
+      Node.ap(b)(
+        Node.map(a)(a => b => c => (a, b, c))
+      )
     )
   }
 
-  def product[A, B, C](a: Node[A], b: Node[B], c: Node[C]): Node[(A, B, C)] = {
-    Node.Ap(
-      c,
-      Node.Ap(
-        b,
-        Node.Func(a, (a: A) => (b: B) => (c: C) => (a, b, c), NodeTag.of[B => C => (A, B, C)]),
-        NodeTag.of[C => (A, B, C)]
-      ) ,
-      NodeTag.of[(A, B, C)]
+  def product[F[_]: Applicative, A, B, C, D](a: Node[F, A], b: Node[F, B], c: Node[F, C], d: Node[F, D]): Node[F, (A, B, C, D)] = {
+    Node.ap(d)(
+      Node.ap(c)(
+        Node.ap(b)(
+          Node.map(a)(a => b => c => d => (a, b, c, d))
+        )
+      )
     )
   }
 
-  def product[A, B, C, D](a: Node[A], b: Node[B], c: Node[C], d: Node[D]): Node[(A, B, C, D)] = {
-    Node.Ap(
-      d,
-      Node.Ap(
-        c,
-        Node.Ap(
-          b,
-          Node.Func(a, (a: A) => (b: B) => (c: C) => (d: D) => (a, b, c, d), NodeTag.of[B => C => D => (A, B, C, D)]),
-          NodeTag.of[C => D => (A, B, C, D)]
-        ) ,
-        NodeTag.of[D => (A, B, C, D)]
-      ),
-      NodeTag.of[(A, B, C, D)]
+  def product[F[_]: Applicative, A, B, C, D, E](a: Node[F, A], b: Node[F, B], c: Node[F, C], d: Node[F, D], e: Node[F, E]): Node[F, (A, B, C, D, E)] = {
+    Node.ap(e)(
+      Node.ap(d)(
+        Node.ap(c)(
+          Node.ap(b)(
+            Node.map(a)(a => b => c => d => e => (a, b, c, d, e))
+          )
+        )
+      )
     )
   }
+
 }
