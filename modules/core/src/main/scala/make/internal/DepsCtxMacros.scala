@@ -3,10 +3,7 @@ package make.internal
 //import scala.reflect.macros.blackbox.Context
 import scala.reflect.macros.whitebox.Context
 import make.Make
-
-// class FailedTraces(
-//   var: 
-// )
+import scala.collection.immutable.ListMap
 
 class DepsCtxMacros(val c: Context) {
 
@@ -24,16 +21,6 @@ class DepsCtxMacros(val c: Context) {
     val makeTc = weakTypeOf[Make[F, _]].typeConstructor
     val out = resolveMake(makeTc, ftpe.tpe, atpe.tpe).orElse(tryTuple(makeTc, ftpe.tpe, atpe.tpe))
     
-    // val xxx = c.openImplicits
-    //   .filter(x => {
-    //     val name = x.pt.typeSymbol.fullName
-    //     name == "make.Make.DepsCtx" || name == "make.Make"
-    //   }).map(candidate => {
-    //     candidate.pt.typeArgs
-    //   })
-
-
-    // println("Deps:" + xxx.mkString("\n"))
     out match {
       case Some(tree) =>
         val ctxTree =
@@ -46,10 +33,37 @@ class DepsCtxMacros(val c: Context) {
     }
   }
 
+  // def materializeGeneric[F[_], A](implicit ftpe: WeakTypeTag[F[X] forSome {type X}], atpe: WeakTypeTag[A]): c.Expr[Make.Generic[F, A]] = {
+  //   val makeTc = weakTypeOf[Make[F, _]].typeConstructor
+  //   // val out = resolveMake(makeTc, ftpe.tpe, atpe.tpe).orElse(tryTuple(makeTc, ftpe.tpe, atpe.tpe))
+    
+  //  val x = atpe.tpe.decls.collectFirst {
+  //     case m: MethodSymbol if m.isPrimaryConstructor && m.isPublic && !m.isAbstract =>
+  //       val blum = m.paramLists.map(_.map(sym => {
+  //         val name = sym.name
+  //         val decl = atpe.tpe.decl(name)
+  //         val memberTpe = decl.asMethod.returnType.asSeenFrom(atpe.tpe, atpe.tpe.typeSymbol)
+  //         resolveMake(makeTc, ftpe.tpe, memberTpe)
+  //       }))
+  //       println(blum)
+  //         // ProductReprWithConstr(
+  //         //   tpe,
+  //         //   m.paramLists.map(
+  //         //     _.zipWithIndex.map(Member.fromSymbol(tpe, defaults))
+  //         //   )
+  //         // )
+  //   }
+  //   ???
+  //   // out match {
+  //   //   case Some(tree) => c.Expr[Make[F, A]](tree)
+  //   //   case None =>
+  //   //    c.abort(c.enclosingPosition, s"Can't find `Make` for ${atpe.tpe}")
+  //   // }
+  // }
+
   def materializeMake[F[_], A](implicit ftpe: WeakTypeTag[F[X] forSome {type X}], atpe: WeakTypeTag[A]): c.Expr[Make[F, A]] = {
     val makeTc = weakTypeOf[Make[F, _]].typeConstructor
     val out = resolveMake(makeTc, ftpe.tpe, atpe.tpe).orElse(tryTuple(makeTc, ftpe.tpe, atpe.tpe))
-    
     out match {
       case Some(tree) => c.Expr[Make[F, A]](tree)
       case None =>
@@ -99,4 +113,7 @@ class DepsCtxMacros(val c: Context) {
       case tree => Some(tree) 
     }
   }
+
+
+
 }

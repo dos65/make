@@ -17,7 +17,7 @@ trait Make[F[_], A] {
 }
 
 object Make {
-  
+
   def context[F[_]: Applicative]: Make.Ctx[F] = new Ctx[F]
 
   def inCtx[F[_]: Make.Ctx]: DerivePartillyApplyed[F] = 

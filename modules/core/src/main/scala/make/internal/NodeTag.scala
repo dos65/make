@@ -3,7 +3,7 @@ package make.internal
 import scala.reflect.ClassTag
 
 case class NodeTag[A](
-  classTag: ClassTag[A],
+  classTag: Class[_],
   pos: NodeTag.Pos
 )
 
@@ -30,7 +30,7 @@ object NodeTag {
       enclosing: sourcecode.Enclosing,
       tag: ClassTag[A]
   ): NodeTag[A] =
-    NodeTag(tag, Pos(file, line, enclosing))
+    NodeTag(tag.runtimeClass, Pos(file, line, enclosing))
 
   def of[A](implicit v: NodeTag[A]): NodeTag[A] = v
 }
