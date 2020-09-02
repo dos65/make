@@ -34,17 +34,16 @@ object Make {
   ) extends Make[F, A]
 
 
-  def debugDerive[F[_], A]: Make[F, A] = 
+  def debugDerive[F[_], A]: MakeDef[F, A] = 
     macro MakeMacro.debugDerive[F, A]
 
-  @implicitNotFound("Make.Def might be used only for `implicit def` declarations")  
   final class Def {
     def pure[F[_]: Applicative, A: Tag](a: A): Make[F, A] = Value(Resource.pure(a), Tag.of[A])
   }
   object Def {
-    private[make] val instance = new Def
-    implicit def materialize: Def =
-      macro MakeMacro.materializeDef
+    // private[make] val instance = new Def
+    // implicit def materialize: Def =
+    //   macro MakeMacro.materializeDef
   }
 }
 

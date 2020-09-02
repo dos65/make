@@ -15,7 +15,8 @@ lazy val core = project.in(file("modules/core"))
       "com.lihaoyi" %% "sourcecode" % "0.1.9",
       "org.scala-lang" % "scala-compiler" % scalaVersion.value % "test",
       "org.scala-lang" % "scala-library" % scalaVersion.value % "test",
-      "org.scala-lang" % "scala-reflect" % scalaVersion.value
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "com.chuusai" %% "shapeless" % "2.3.3"
     ),
     fork in Test := true,
     fork in testOnly := true,

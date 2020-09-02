@@ -21,26 +21,11 @@ sealed trait MakeDef[F[_], A] { self =>
     }
 }
 
-trait GenFailed[A] {
-  def gen: A 
-}
-
-object GenFailed {
-  def instance[A](a: A): GenFailed[A] = {
-    new GenFailed[A] {
-      def gen: A = a
-    }
-  }
-}
-
 trait LowPrioMakeDef {
-  // implicit def failedMakeDef[F[_], A](implicit genFailed: GenFailed[MakeDef[F, A]]): MakeDef[F, A] =
-  //   genFailed.gen
-  implicit def fallback[F[_], A]: MakeDef[F, A] =
-    macro MakeMacro.genFailed[F, A]
+  implicit def debugInstance[F[_], A](implicit x: Debug[MakeDef[F, A]]): MakeDef[F, A] = x.v
 }
 
-object MakeDef  extends LowPrioMakeDef {
+object MakeDef extends LowPrioMakeDef {
 
   sealed trait Failed[F[_], A] extends MakeDef[F, A]
   sealed trait Resolved[F[_], A] extends MakeDef[F, A]
