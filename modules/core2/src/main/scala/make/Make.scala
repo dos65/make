@@ -33,17 +33,5 @@ object Make {
     tag: Tag[A]
   ) extends Make[F, A]
 
-
-  def debugDerive[F[_], A]: MakeDef[F, A] = 
-    macro MakeMacro.debugDerive[F, A]
-
-  final class Def {
-    def pure[F[_]: Applicative, A: Tag](a: A): Make[F, A] = Value(Resource.pure(a), Tag.of[A])
-  }
-  object Def {
-    // private[make] val instance = new Def
-    // implicit def materialize: Def =
-    //   macro MakeMacro.materializeDef
-  }
 }
 

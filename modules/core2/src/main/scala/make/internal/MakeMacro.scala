@@ -10,39 +10,11 @@ class MakeMacro(val c: whitebox.Context) {
 
   import c.universe._
 
-
   val state = MacroState.getOrElseUpdate[DebugSt](c.universe, new DebugSt)
 
-  def debugDerive[F[_], A](implicit ftpe: WeakTypeTag[F[X] forSome {type X}], atpe: WeakTypeTag[A]): c.Expr[MakeDef[F, A]] = {
-    val makeTc = weakTypeOf[MakeDef[F, _]].typeConstructor
-    val searchType = appliedType(makeTc, ftpe.tpe, atpe.tpe)
+  val debugInstanceFullName = "make.LowPrioMakeDef.debugInstance"
+  val debugHookFullName = "make.enableDebug.debugHook" 
 
-    c.inferImplicitValue(searchType) match {
-      case EmptyTree =>
-        c.abort(c.enclosingPosition, "Failed")
-      case tree =>
-        println(c.universe.showRaw(tree))
-        tree.collect{
-          case a: Apply => 
-            println(s"This: $a")
-        }
-        println(tree)
-        c.info(c.enclosingPosition, "OK! Replace debug", true)
-        c.Expr[MakeDef[F, A]](tree)
-    }
-  }
-
-  // def materializeDef: c.Expr[Make.Def] = {
-  //   val enclosing = c.enclosingImplicits
-  //   if (enclosing.size < 2) {
-  //     c.abort(c.enclosingPosition, "Make.Def might be used only in `implicit def`")
-  //   }
-  //   if (state.debug) {
-  //     println(enclosing)
-  //   }
-  //   c.Expr[Make.Def](q"_root_.make.Make.Def.instance")
-  // }
-  
   def debug[F[_], A](
     implicit ftpe: WeakTypeTag[F[X] forSome {type X}], atpe: WeakTypeTag[A]
   ): c.Expr[MakeDef[F, A]] = {
@@ -54,8 +26,11 @@ class MakeMacro(val c: whitebox.Context) {
     val out = c.inferImplicitValue(searchType)
     state.debug = false
     out match {
-      case EmptyTree => 
-        c.abort(c.enclosingPosition, "Failed")
+      case EmptyTree =>
+        println(state.reverseTraces)
+        val st = extractInstanceSt(atpe.tpe, state.reverseTraces)
+        val message = renderInstanceSt(st)
+        c.abort(c.enclosingPosition, s"Make for ${atpe.tpe} not found\n" + message)
       case tree => 
         val message = s"Debug: OK!\n\tMake instance for ${atpe.tpe} exists.\n\nRemove debug usage."
         c.info(c.enclosingPosition, message, true)
@@ -67,9 +42,12 @@ class MakeMacro(val c: whitebox.Context) {
     implicit ftpe: WeakTypeTag[F[X] forSome {type X}], atpe: WeakTypeTag[A]
   ): c.Expr[Debug[MakeDef[F, A]]] = {
 
+
     if (!state.debug) c.abort(c.enclosingPosition, "debug is not enabled")
+    val makeDef = weakTypeOf[MakeDef[F, _]].typeConstructor
 
     val open = c.openImplicits
+
     val isSelfLoop =
       if (open.size > 2) {
         val c = open(2)
@@ -81,35 +59,103 @@ class MakeMacro(val c: whitebox.Context) {
     if (isSelfLoop) {
       c.abort(c.enclosingPosition, "skip")
     } else {
+      val trace = resolutionTrace(open, makeDef)
 
-      state.traces.get(atpe.tpe) match {
-        case Some(traces) =>
-          val contains = traces.contains(Trace(open))
-          println(s"CONTAINES? $contains ${open.mkString("\n")}")
-          state.traces.update(atpe.tpe, traces + Trace(open))
-        case None =>
-          state.traces.update(atpe.tpe, Set(Trace(open)))
-      }
-
-      val makeDef = weakTypeOf[MakeDef[F, _]].typeConstructor
       val makeTpe = appliedType(makeDef, ftpe.tpe, atpe.tpe)
-
-      val x = c.inferImplicitValue(makeTpe)
-      x match {
+      val defaultInstance = c.inferImplicitValue(makeTpe)
+      defaultInstance match {
         case EmptyTree =>
+          trace.path.headOption.foreach{ v => 
+            val symSt = state.reverseTraces.getOrElse(v.tpe, mutable.HashMap.empty)
+            symSt.update(v.sym, atpe.tpe)
+            state.reverseTraces.update(v.tpe, symSt)
+          }
 
-          c.info(c.enclosingPosition, s"REACHED EXPORT HOOK ${atpe.tpe}", true)
-          c.abort(c.enclosingPosition, "silent error")
+          c.abort(c.enclosingPosition, s"Instance resolution for ${atpe.tpe} failed")
         case smt =>
           c.abort(c.enclosingPosition, "Instance exists: skip")
       }
-
     }
   }
 
-  case class Trace(path: List[c.ImplicitCandidate])
+  private def resolutionTrace(
+    openImplicits: List[c.ImplicitCandidate],
+    makeTc: c.Type 
+  ): Trace = {
+    val filtered = openImplicits.filter(c => !isDebugCandidate(c))
+      .flatMap{c =>
+        val dealiased = c.pt.dealias
+        val tc = dealiased.typeConstructor
+        if (tc =:= makeTc) {
+          val tpe = dealiased.typeArgs(1)
+          Some(Part(tpe, c.sym))
+        } else {
+          None
+        }
+    }
+    Trace(filtered)
+  }
+
+  private def isDebugCandidate(candidate: c.ImplicitCandidate): Boolean = {
+    val fullPath = candidate.sym.fullName
+    fullPath == debugHookFullName || fullPath == debugInstanceFullName
+  }
+
+  private def extractInstanceSt(
+    targetType: c.Type,
+    reverseTraces: mutable.HashMap[Type, mutable.HashMap[c.Symbol, c.Type]]
+  ): InstanceSt = {
+    reverseTraces.get(targetType) match {
+      case None => InstanceSt.NoInstances(targetType)
+      case Some(paths) =>
+        val traces = paths.map{ case (sym, tpe) => 
+           val depSt = extractInstanceSt(tpe, reverseTraces)
+           InstanceSt.FailedTrace(sym, tpe, depSt)
+        }
+        InstanceSt.FailedTraces(targetType, traces.toList)
+    }
+  }
+
+  private def renderInstanceSt(st: InstanceSt): String = {
+
+    def render(sb: StringBuilder, level: Int, st: InstanceSt): StringBuilder = {
+      val tabs = "\t" * level
+      val appendTabs = tabs + "\t"
+      sb.append(s"\n${tabs}Make instance for ${st.tpe}:")
+      st match {
+        case InstanceSt.NoInstances(_) =>
+          sb.append(s"\n${appendTabs}No defined Make instances for ${st.tpe}")
+        case InstanceSt.FailedTraces(_, traces) =>
+          traces.foldLeft(sb){case (sb, trace) => 
+            val next = sb.append(s"\n${appendTabs}Failed at ${trace.sym.fullName} becase ${trace.dependencyTpe}:")
+            render(next, level + 1, trace.dependencySt)
+          }
+      }
+    }
+    
+    render(new StringBuilder, 1 , st).toString
+  }
+
+  sealed trait InstanceSt {
+    def tpe: Type
+  }
+  object InstanceSt {
+    final case class NoInstances(tpe: Type) extends InstanceSt
+
+    final case class FailedTrace(
+      sym: Symbol,
+      dependencyTpe: Type,
+      dependencySt: InstanceSt
+    )
+    
+    final case class FailedTraces(tpe: Type, traces: List[FailedTrace]) extends InstanceSt
+  }
+
+  case class Part(tpe: c.Type, sym: Symbol)
+  case class Trace(path: List[Part])
+  
   class DebugSt(
     var debug: Boolean = false,
-    val traces: mutable.HashMap[Type, Set[Trace]] = mutable.HashMap.empty
+    val reverseTraces: mutable.HashMap[Type, mutable.HashMap[c.Symbol, c.Type]] = mutable.HashMap.empty
   )
 }
