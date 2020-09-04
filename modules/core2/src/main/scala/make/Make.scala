@@ -7,14 +7,13 @@ import cats.Applicative
 import cats.effect.Resource
 
 import make.internal.MakeMacro
-import scala.annotation.implicitNotFound
 
-sealed trait Make[F[_], A] {
+sealed abstract class Make[F[_], A] { self =>
   def tag: Tag[A]
   final def make: Resource[F, A] = ???
 }
 
-object Make {
+object Make extends LowPrioMake {
 
   final private[make] case class Value[F[_], A](
     v: Resource[F, A],
@@ -23,7 +22,7 @@ object Make {
 
   final private[make] case class Bind[F[_], In, A](
     prev: Make[F, In],
-    f: In => F[Resource[F, A]],
+    f: In => Resource[F, A],
     tag: Tag[A]
   ) extends Make[F, A]
 
@@ -33,5 +32,10 @@ object Make {
     tag: Tag[A]
   ) extends Make[F, A]
 
+  def pure[F[_]: Applicative, A: Tag](a: A): Make[F, A] =
+    Value(Resource.pure(a), Tag.of[A])
 }
 
+trait LowPrioMake {
+  implicit def debugInstance[F[_], A](implicit x: Debug[Make[F, A]]): Make[F, A] = x.v
+}

@@ -2,7 +2,6 @@ package make.internal
 
 import scala.reflect.macros.whitebox
 import make.Make
-import make.MakeDef
 import make.Debug
 import scala.collection.mutable
 
@@ -12,14 +11,14 @@ class MakeMacro(val c: whitebox.Context) {
 
   val state = MacroState.getOrElseUpdate[DebugSt](c.universe, new DebugSt)
 
-  val debugInstanceFullName = "make.LowPrioMakeDef.debugInstance"
+  val debugInstanceFullName = "make.LowPrioMake.debugInstance"
   val debugHookFullName = "make.enableDebug.debugHook" 
 
   def debug[F[_], A](
     implicit ftpe: WeakTypeTag[F[X] forSome {type X}], atpe: WeakTypeTag[A]
-  ): c.Expr[MakeDef[F, A]] = {
+  ): c.Expr[Make[F, A]] = {
 
-    val makeTc = weakTypeOf[MakeDef[F, _]].typeConstructor
+    val makeTc = weakTypeOf[Make[F, _]].typeConstructor
     val searchType = appliedType(makeTc, ftpe.tpe, atpe.tpe)
 
     state.debug = true
@@ -34,17 +33,17 @@ class MakeMacro(val c: whitebox.Context) {
       case tree => 
         val message = s"Debug: OK!\n\tMake instance for ${atpe.tpe} exists.\n\nRemove debug usage."
         c.info(c.enclosingPosition, message, true)
-        c.Expr[MakeDef[F, A]](tree)
+        c.Expr[Make[F, A]](tree)
     }
   }
 
   def debugHook[F[_], A](
     implicit ftpe: WeakTypeTag[F[X] forSome {type X}], atpe: WeakTypeTag[A]
-  ): c.Expr[Debug[MakeDef[F, A]]] = {
+  ): c.Expr[Debug[Make[F, A]]] = {
 
 
     if (!state.debug) c.abort(c.enclosingPosition, "debug is not enabled")
-    val makeDef = weakTypeOf[MakeDef[F, _]].typeConstructor
+    val makeTc = weakTypeOf[Make[F, _]].typeConstructor
 
     val open = c.openImplicits
 
@@ -55,13 +54,15 @@ class MakeMacro(val c: whitebox.Context) {
       } else {
         false
       }
+    println(open)  
+    println()
     
     if (isSelfLoop) {
       c.abort(c.enclosingPosition, "skip")
     } else {
-      val trace = resolutionTrace(open, makeDef)
+      val trace = resolutionTrace(open, makeTc)
 
-      val makeTpe = appliedType(makeDef, ftpe.tpe, atpe.tpe)
+      val makeTpe = appliedType(makeTc, ftpe.tpe, atpe.tpe)
       val defaultInstance = c.inferImplicitValue(makeTpe)
       defaultInstance match {
         case EmptyTree =>
@@ -124,10 +125,10 @@ class MakeMacro(val c: whitebox.Context) {
       sb.append(s"\n${tabs}Make instance for ${st.tpe}:")
       st match {
         case InstanceSt.NoInstances(_) =>
-          sb.append(s"\n${appendTabs}No defined Make instances for ${st.tpe}")
+          sb.append(s"\n${appendTabs}Make instance for ${st.tpe} not found")
         case InstanceSt.FailedTraces(_, traces) =>
           traces.foldLeft(sb){case (sb, trace) => 
-            val next = sb.append(s"\n${appendTabs}Failed at ${trace.sym.fullName} becase ${trace.dependencyTpe}:")
+            val next = sb.append(s"\n${appendTabs}Failed at ${trace.sym.fullName} becase of:")
             render(next, level + 1, trace.dependencySt)
           }
       }

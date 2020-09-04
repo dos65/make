@@ -4,13 +4,13 @@ import make.internal.MakeMacro
 
 object enableDebug {
 
-  implicit def debugHook[F[_], A]: Debug[MakeDef[F, A]] =
+  implicit def debugHook[F[_], A]: Debug[Make[F, A]] =
     macro MakeMacro.debugHook[F, A]
 
 
-  implicit class DebugSyntax(val obj: MakeDef.type) extends AnyVal {
+  implicit class DebugSyntax(val obj: Make.type) extends AnyVal {
     
-    def debugOf[F[_], A]: MakeDef[F, A] = 
+    def debugOf[F[_], A]: Make[F, A] = 
       macro MakeMacro.debug[F, A]
   }
 }
