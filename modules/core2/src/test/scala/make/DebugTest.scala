@@ -13,6 +13,7 @@ object A {
 }
 case class B(a: A)
 case class C(b: B)
+case class D(c: C, a: A)
 
 class DebugTest extends FunSuite {
 
@@ -24,5 +25,13 @@ class DebugTest extends FunSuite {
     implicit def cMake(implicit bm: Make[IO, B]): Make[IO, C] = bm.map(C(_))
 
     Make.debugOf[IO, C]
+  }
+
+  test("zzz") {
+
+    implicit def bMake(implicit am: Make[IO, A]): Make[IO, B] = am.map(B(_))
+    implicit def cMake(implicit bm: Make[IO, B]): Make[IO, C] = bm.map(C(_))
+    implicit def dMake(implicit deps: Make[IO, (C, A)]): Make[IO, D] = deps.map({case (c, a) => D(c, a)})
+    Make.debugOf[IO, D]
   }
 }

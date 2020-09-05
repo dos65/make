@@ -30,6 +30,7 @@ lazy val core2 = project.in(file("modules/core2"))
     scalacOptions ++= Seq(
       "-language:experimental.macros"
     ),
+    sourceGenerators in Compile += (sourceManaged in Compile).map(dir => Boilerplate.gen(dir)).taskValue,
     libraryDependencies += "org.scalameta" %% "munit" % "0.4.3" % "test",
     testFrameworks += new TestFramework("munit.Framework"),
     libraryDependencies ++= Seq(

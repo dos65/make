@@ -7,13 +7,14 @@ import cats.Applicative
 import cats.effect.Resource
 
 import make.internal.MakeMacro
+import make.internal.MakeOps
 
 sealed abstract class Make[F[_], A] { self =>
   def tag: Tag[A]
   final def make: Resource[F, A] = ???
 }
 
-object Make extends LowPrioMake {
+object Make extends MakeTupleInstances with LowPrioMake {
 
   final private[make] case class Value[F[_], A](
     v: Resource[F, A],

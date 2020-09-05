@@ -54,8 +54,6 @@ class MakeMacro(val c: whitebox.Context) {
       } else {
         false
       }
-    println(open)  
-    println()
     
     if (isSelfLoop) {
       c.abort(c.enclosingPosition, "skip")
