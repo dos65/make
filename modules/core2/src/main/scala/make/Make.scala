@@ -35,6 +35,12 @@ object Make extends MakeTupleInstances with LowPrioMake {
 
   def pure[F[_]: Applicative, A: Tag](a: A): Make[F, A] =
     Value(Resource.pure(a), Tag.of[A])
+
+  def liftF[F[_]: Applicative, A: Tag](fa: F[A]): Make[F, A] =
+    Value(Resource.liftF(fa), Tag.of[A])
+
+  def resource[F[_], A: Tag](v: Resource[F, A]): Make[F, A] =
+    Value(v, Tag.of[A])
 }
 
 trait LowPrioMake {

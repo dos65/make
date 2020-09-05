@@ -21,7 +21,7 @@ object Boilerplate {
 
 
   val templates: Seq[Template] = List(
-    MakeProductNOps, MakeTupleInstances
+    MakeProductNOps, MakeTupleInstances, MakeTupleSyntaxClasses, MakeTupleSyntax
   )
 
   /** Returns a seq of the generated files.  As a side-effect, it actually generates them... */
@@ -127,6 +127,61 @@ object Boilerplate {
            | 
            -  implicit def tuple$arity[Eff[_]: Applicative, ${`A..N`}](implicit $implicitValues): Make[Eff, ${`(A..N)`}] =
            -    MakeOps.productN($args)
+           |}
+           """
+    }
+  } 
+
+  object MakeTupleSyntaxClasses extends Template {
+    override def packageName: String = "make/tupleNSyntaxClasses"
+    override def filename: String = "tupleNSyntaxClasses.scala"
+    override def range: Range = 2 to 22
+    override def content(tv: TemplateVals): String = {
+
+      import tv._
+
+      block"""
+           |package make
+           |
+           |import make.internal.MakeOps
+           |import cats.Applicative
+           |import cats.effect.Resource
+           |
+           |object tupleNSyntaxClasses {
+           -  class MakeTupleNSyntax$arity[Eff[_], ${`A..N`}](private val v: Make[Eff, ${`(A..N)`}]) extends AnyVal {
+           -    def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit Eff: Applicative[Eff]): Make[Eff, Res] =
+           -      MakeOps.map(v)({case ${`(a..n)`} => ff${`(a..n)`}})
+           -
+           -    def mapFN[Res: Tag](ff: ${`(A..N)`} => Eff[Res])(implicit Eff: Applicative[Eff]): Make[Eff, Res] =
+           -      MakeOps.mapF(v)({case ${`(a..n)`} => ff${`(a..n)`}})
+           -
+           -    def mapResourceN[Res: Tag](ff: ${`(A..N)`} => Resource[Eff, Res]): Make[Eff, Res] =
+           -      MakeOps.mapResource(v)({case ${`(a..n)`} => ff${`(a..n)`}})
+           -  }
+           |}
+           """
+    }
+  } 
+
+  object MakeTupleSyntax extends Template {
+    override def packageName: String = "make/MakeTupleSyntax"
+    override def filename: String = "MakeTupleSyntax.scala"
+    override def range: Range = 2 to 22
+    override def content(tv: TemplateVals): String = {
+
+      import tv._
+
+      block"""
+           |package make
+           |
+           |import make.internal.MakeOps
+           |import cats.Applicative
+           |
+           |trait MakeTupleSyntax {
+           |
+           -  implicit def makeToTupleNSyntax$arity[Eff[_], ${`A..N`}](make: Make[Eff, ${`(A..N)`}]) =
+           -    new tupleNSyntaxClasses.MakeTupleNSyntax$arity(make)
+           -
            |}
            """
     }

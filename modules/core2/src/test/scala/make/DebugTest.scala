@@ -30,8 +30,8 @@ class DebugTest extends FunSuite {
   test("zzz") {
 
     implicit def bMake(implicit am: Make[IO, A]): Make[IO, B] = am.map(B(_))
-    implicit def cMake(implicit bm: Make[IO, B]): Make[IO, C] = bm.map(C(_))
-    implicit def dMake(implicit deps: Make[IO, (C, A)]): Make[IO, D] = deps.map({case (c, a) => D(c, a)})
+    implicit def cMake(implicit bm: Make[IO, B]): Make[IO, C] = bm.mapF(b => IO.pure(C(b)))
+    implicit def dMake(implicit deps: Make[IO, (C, A)]): Make[IO, D] = deps.mapN(D)
     Make.debugOf[IO, D]
   }
 }
