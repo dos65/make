@@ -41,7 +41,7 @@ lazy val core2 = project.in(file("modules/core2"))
   )
 
 lazy val example = project.in(file("modules/example"))
-  .dependsOn(core)
+  .dependsOn(core2)
   .settings(commonSettings)
   .settings(
     //scalacOptions ++= Seq("-Ymacro-debug-lite", "-Yshow-trees-compact")

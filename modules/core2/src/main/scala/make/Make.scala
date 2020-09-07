@@ -11,10 +11,11 @@ import make.internal.MakeOps
 
 sealed abstract class Make[F[_], A] { self =>
   def tag: Tag[A]
-  final def make: Resource[F, A] = ???
 }
 
 object Make extends MakeTupleInstances with LowPrioMake {
+
+  def of[F[_], A](implicit m: Make[F, A]): Make[F, A] = m
 
   final private[make] case class Value[F[_], A](
     v: Resource[F, A],

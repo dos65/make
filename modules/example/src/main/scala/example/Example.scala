@@ -6,6 +6,9 @@ import cats.effect.implicits._
 import cats.effect.IOApp
 
 import make._
+//import make.enableDebug._
+import make.syntax._
+import cats.Applicative
 
 object Example extends IOApp {
 
@@ -16,32 +19,49 @@ object Example extends IOApp {
 
   case class Hoho(dep: Dep)
   object Hoho {
-    implicit def make(implicit mk: Make.DepsCtx[IO, Dep]): Make[IO, Hoho] =
-      mk.func(Hoho(_))
+    implicit def make[F[_]: Applicative](implicit depM: Make[F, Dep]): Make[F, Hoho] =
+      depM.map(Hoho(_))
   }
 
   case class Yohoho(
     dep1: Dep,
-    hoho: Hoho 
+    hoho: Hoho
   )
+
   object Yohoho {
-    implicit def make(implicit mk: Make.DepsCtx[IO, (Dep, Hoho)]): Make[IO, Yohoho] =
-      mk.func{ case (x, y) => Yohoho(x, y) }
+    implicit def make[F[_]: Applicative](implicit deps: Make[F, (Dep, Hoho)]) =
+      deps.mapN(Yohoho.apply)
+  }
+
+  case class Yohoho2(
+    dep1: Dep,
+    hoho: Hoho
+  )
+
+  object Yohoho2 {
+    // implicit def make[F[_]: Applicative](implicit deps: Make[F, (Dep, Hoho)]) = {
+    //   val wrong = (DepImpl("asd"), Hoho(DepImpl("gogo"))) 
+    //   Make.pure[F, (Dep, Hoho)](wrong)
+    //     .mapN(Yohoho2.apply)
+    // }
+    implicit def make[F[_]: Applicative](implicit deps: Make[F, (Dep, Hoho)]) =
+      deps.mapN(Yohoho2.apply)
+  }
+
+  case class End(yo: Yohoho, yo2: Yohoho2)
+  object End {
+    implicit def make[F[_]: Applicative](implicit deps: Make[F, (Yohoho, Yohoho2)]) =
+      deps.mapN(End.apply)
   }
 
   override def run(args: List[String]): IO[ExitCode] = {
-    implicit val ctx = Make.context[IO]
+    implicit val depMake = Make.pure[IO, Dep](new DepImpl("asdad"))
 
-    //implicit val hohoOverride: Make[IO, Hoho] = ctx.pure(Hoho(DepImpl("override")))
-    implicit def make(implicit mk: Make.Ctx[IO]): Make[IO, Dep] =
-      mk.effect(IO.pure(DepImpl("asdasdas")))
-    
-    val resource = Make.inCtx[IO].derive[Yohoho].asResource
+    val make = Make.of[IO, End]
+    val resource = make.toResource
     val f = for {
-      _ <- resource.use(v => IO(println(v)))
+       _ <-resource.use(end => IO(println(end)))
     } yield ()
-
-   f.as(ExitCode.Success)
+    f.as(ExitCode.Success)
   }
-
 }
