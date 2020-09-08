@@ -139,15 +139,15 @@ class MakeMacro(val c: whitebox.Context) {
     def tpe: Type
   }
   object InstanceSt {
-    final case class NoInstances(tpe: Type) extends InstanceSt
+    case class NoInstances(tpe: Type) extends InstanceSt
 
-    final case class FailedTrace(
+    case class FailedTrace(
       sym: Symbol,
       dependencyTpe: Type,
       dependencySt: InstanceSt
     )
     
-    final case class FailedTraces(tpe: Type, traces: List[FailedTrace]) extends InstanceSt
+    case class FailedTraces(tpe: Type, traces: List[FailedTrace]) extends InstanceSt
   }
 
   case class Part(tpe: c.Type, sym: Symbol)

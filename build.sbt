@@ -1,7 +1,7 @@
 val commonSettings = Seq(
-  scalaVersion := "2.12.12",
-  //scalaVersion := "0.26.0-RC1",
-  crossScalaVersions := Seq("2.12.12", "0.26.0-RC1")
+  scalaVersion := "2.13.3",
+  organization := "io.github.dos65",
+  crossScalaVersions := Seq("2.12.12", "2.13.3")
 )
 
 lazy val core = project.in(file("modules/core"))
@@ -23,10 +23,10 @@ lazy val core = project.in(file("modules/core"))
     scalacOptions in run := Seq.empty
   )
 
-lazy val core2 = project.in(file("modules/core2"))
+lazy val make = project.in(file("modules/core2"))
   .settings(commonSettings)
   .settings(
-    scalaVersion := "2.12.12",
+    name := "make",
     scalacOptions ++= Seq(
       "-language:experimental.macros"
     ),
@@ -41,8 +41,5 @@ lazy val core2 = project.in(file("modules/core2"))
   )
 
 lazy val example = project.in(file("modules/example"))
-  .dependsOn(core2)
+  .dependsOn(make)
   .settings(commonSettings)
-  .settings(
-    //scalacOptions ++= Seq("-Ymacro-debug-lite", "-Yshow-trees-compact")
-  )
