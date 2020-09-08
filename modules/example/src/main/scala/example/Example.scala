@@ -60,7 +60,7 @@ object Example extends IOApp {
     val make = Make.of[IO, End]
     val resource = make.toResource
     val f = for {
-       _ <-resource.use(end => IO(println(end)))
+       _ <- resource.use(end => IO(println(end)))
     } yield ()
     f.as(ExitCode.Success)
   }
