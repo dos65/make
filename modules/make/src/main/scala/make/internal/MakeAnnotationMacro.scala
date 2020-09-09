@@ -9,23 +9,23 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
   def deriveMake(annottees: Tree*): Tree = {
     annottees match {
     case List(
-           clsDef @ q"case class ${name: TypeName}[..${typeParams: Seq[TypeDef]}](..${valueParams: Seq[ValDef]}) extends ..$bases { ..$body }" 
+           clsDef @ q"case class ${name: TypeName}[..${typeParams: Seq[TypeDef]}](..${valueParams: Seq[ValDef]})(implicit ..${implicitParams}) extends ..$bases { ..$body }" 
          ) =>
           q"""
             $clsDef
             object ${name.toTermName} {
-              ${instanceTree(name, valueParams)}
+              ${instanceTree(name, typeParams, valueParams, implicitParams)}
             } 
            """
     case List(
-           clsDef @ q"case class ${name: TypeName}[..${typeParams: Seq[TypeDef]}](..${valueParams: Seq[ValDef]}) extends ..$bases { ..$body }",
+           clsDef @ q"case class ${name: TypeName}[..${typeParams: Seq[TypeDef]}](..${valueParams: Seq[ValDef]})(implicit ..${implicitParams}) extends ..$bases { ..$body }",
            q"..$mods object $objName extends { ..$objEarlyDefs } with ..$objParents { $objSelf => ..$objDefs }"
          ) =>
           q"""
             $clsDef
             $mods object $objName extends { ..$objEarlyDefs } with ..$objParents { $objSelf =>
                ..$objDefs
-              ..${instanceTree(name, valueParams)}
+              ..${instanceTree(name, typeParams, valueParams, implicitParams)}
             }
            """
     case _ =>
@@ -35,18 +35,35 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
 
   private def instanceTree(
     name: TypeName,
-    params: Seq[ValDef]
+    typeParams: Seq[TypeDef],
+    params: Seq[ValDef],
+    implicitParams: Seq[ValDef]
   ): Tree = {
     val paramsTpe = params.map(_.tpt)
     val tpe = tq"(..${params.map(_.tpt)})"
+    val typeArgs = typeParams.map(_.name)
     val applyF = params.size match {
-      case 1 => q"${name.toTermName}.apply"
-      case _ => q"(${name.toTermName}.apply _).tupled"
+      case 1 => q"${name.toTermName}.apply[..$typeArgs]"
+      case _ => q"(${name.toTermName}.apply[..$typeArgs] _).tupled"
     }
+    val effTpe = TermName(c.freshName("MakeEff")).toTypeName
+    
+    val targetTpe = 
+      if (typeParams.isEmpty)
+        tq"${name.toTypeName}"
+      else
+        tq"${name.toTypeName}[..${typeParams.map(_.name)}]"
+
+    val implicits =
+      q"deps: _root_.make.Make[$effTpe, $tpe]" ::
+      q"${TermName(c.freshName())}: _root_.cats.Applicative[$effTpe]" :: 
+      implicitParams.toList ++
+      (if (paramsTpe.isEmpty) List.empty else List(q"tag: _root_.make.Tag[$targetTpe]"))
+      
     q"""
-        implicit def make[F[_]: _root_.cats.Applicative](
-            implicit deps: _root_.make.Make[F, $tpe]
-        ): Make[F, ${name}] = deps.map($applyF)
+        implicit def make[$effTpe[_], ..$typeParams](
+            implicit ..${implicits}
+        ): Make[$effTpe, $targetTpe] = deps.map($applyF)
       """
   }
 
