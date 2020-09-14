@@ -10,13 +10,20 @@ class MakeTest extends FunSuite {
 
   test("basic") {
     val a = Make.pure[IO, Int](1)
-    assertEquals(a.tag.sourcePos, SourcePos("make.MakeTest.a", 12, 9))
+    assertEquals(a.tag.sourcePos, SourcePos("make.MakeTest.a", 12, 31))
   }
 
   test("map") {
     val a = Make.pure[IO, Int](42)
     val b = a.map(_.toString)
-    assertEquals(b.tag.sourcePos, SourcePos("make.MakeTest.b", 18, 9))
+    assertEquals(b.tag.sourcePos, SourcePos("make.MakeTest.b", 18, 18))
+  }
+
+  test("conflict") {
+    val a = Make.pure[IO, Int](42)
+    val b = a.map(identity)
+    assert(a.toDag.isRight)
+    assert(b.toDag.isLeft)
   }
   
 }

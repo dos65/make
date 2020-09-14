@@ -9,7 +9,7 @@ class SourcePosMacro(val c: blackbox.Context) {
 
   def materializeSourcePos: c.Expr[SourcePos] = {
     val owner = c.internal.enclosingOwner
-    val pos = owner.pos
+    val pos = c.enclosingPosition
     val line = pos.line
     val start = pos.column
     val tree = q"new _root_.make.Tag.SourcePos(${owner.fullName}, $line, $start)"
