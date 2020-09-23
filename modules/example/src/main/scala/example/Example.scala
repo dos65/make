@@ -6,7 +6,6 @@ import cats.effect.implicits._
 import cats.effect.IOApp
 
 import make._
-import make.enableDebug._
 import make.syntax._
 import cats.Applicative
 
@@ -24,7 +23,6 @@ object Example extends IOApp {
 
   @deriveMake
   case class Hoho(dep: Dep)
-  
 
   @deriveMake
   case class Yohoho(
@@ -33,7 +31,7 @@ object Example extends IOApp {
   )
 
   @deriveMake
-  case class Yohoho2(
+  class Yohoho2(
     dep1: Dep,
     hoho: Hoho
   )
@@ -43,7 +41,6 @@ object Example extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] = {
     implicit val depMake = Make.pure[IO, Dep](new DepImpl("asdad"))
-
     val make = Make.of[IO, End[IO]]
     val resource = make.toResource
     val f = for {
