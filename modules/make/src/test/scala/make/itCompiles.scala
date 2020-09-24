@@ -12,21 +12,59 @@ object itCompiles {
 
   object annotations {
 
-    @deriveMake
+    @autoMake
     case class Smth1(a: Int)
+    object Smth1Test {
+      implicit val intMake = Make.pure[IO, Int](42)
+      Make.of[IO, Smth1]
+    }
 
-    @deriveMake
+    @autoMake
     case class Smth2(a: Int, b: String)
+    object Smth2Test {
+      implicit val intMake = Make.pure[IO, Int](42)
+      implicit val stringMake = Make.pure[IO, String]("42")
+      Make.of[IO, Smth2]
+    }
 
-    @deriveMake
-    case class Smth2Implicit[F[_]](a: Int, b: String)(implicit F: Sync[F])
+    @autoMake
+    case class Smth2Implicit[F[_]](a: Int, b: String)(implicit val F: Sync[F])
+    object Smth2ImplicitTest {
+      implicit val intMake = Make.pure[IO, Int](42)
+      implicit val stringMake = Make.pure[IO, String]("42")
+      Make.of[IO, Smth2Implicit[IO]]
+    }
 
-    //implicit def make[MakeEff$macro$5[_]](implicit deps: _root_.make.Make[MakeEff$macro$5, scala.Tuple2[Int, String]], fresh$macro$6: _root_.cats.Applicative[MakeEff$macro$5], x: Double, tag: _root_.make.Tag[Smth2Implicit]): Make[MakeEff$macro$5, Smth2Implicit] = _root_.make.internal.MakeOps.map(deps)(((x0: Int, x1: String) => new Smth2Implicit(x0, x1)).tupled)
-    
-    @deriveMake
+    @autoMake
     class NonCase1(a: Int)
+    object NonCase1Test {
+      implicit val intMake = Make.pure[IO, Int](42)
+      Make.of[IO, NonCase1]
+    }
 
-    @deriveMake
+    @autoMake
     class NonCase2(a: Int, b: String)
+    object NonCase2Test {
+      implicit val intMake = Make.pure[IO, Int](42)
+      implicit val stringMake = Make.pure[IO, String]("42")
+      Make.of[IO, NonCase2]
+    }
+
+    @autoMake
+    class NonCaseImplicit[F[_]](a: Int, b: String)(implicit val F: Sync[F])
+    object NonCaseImplicitTest {
+      implicit val intMake = Make.pure[IO, Int](42)
+      implicit val stringMake = Make.pure[IO, String]("42")
+      Make.of[IO, NonCaseImplicit[IO]]
+    }
+
+    @autoMake
+    class NonCaseImplicit2[F[_]: Sync](a: Int, b: String)
+    object NonCaseImplicit2Test {
+      implicit val intMake = Make.pure[IO, Int](42)
+      implicit val stringMake = Make.pure[IO, String]("42")
+      Make.of[IO, NonCaseImplicit2[IO]]
+    }
   }
+
 }

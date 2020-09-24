@@ -1,7 +1,7 @@
 val commonSettings = Seq(
   scalaVersion := "2.13.3",
   organization := "io.github.dos65",
-  version := "0.1.0",
+  version := "0.0.1",
   crossScalaVersions := Seq("2.12.12", "2.13.3"),
   libraryDependencies ++= {
     if (is213(scalaVersion.value))
