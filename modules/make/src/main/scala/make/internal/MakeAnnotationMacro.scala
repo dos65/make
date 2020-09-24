@@ -8,9 +8,6 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
   import c.universe._
 
   def autoMake(annottees: Tree*): Tree = {
-    def reportUnexpectedError(): Nothing =
-       c.abort(c.enclosingPosition, "Something went wrong. Please file an issue")
-
     annottees match {
       case List(cls: ClassDef) =>
           Clz.extract(cls) match {
@@ -42,6 +39,48 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
         c.abort(c.enclosingPosition, "@deriveMake can be applied only on case classes or classes")
     }
   }
+
+  def autoMakeAs(annottees: Tree*): Tree = {
+    println(c.prefix.tree)
+    val ident = c.prefix.tree match {
+      case q"new autoMakeAs(classOf[${clz: Ident}])" => clz
+      case _ => 
+        reportUnexpectedError()
+    }
+    annottees match {
+      case List(cls: ClassDef) =>
+          Clz.extract(cls) match {
+            case Some(clz) =>
+            q"""
+              $cls
+              object ${cls.name.toTermName} {
+                ${instanceTree(clz)}
+              }
+            """ 
+            case None => reportUnexpectedError() 
+          }
+      case List(
+              cls: ClassDef,
+              q"..$mods object $objName extends { ..$objEarlyDefs } with ..$objParents { $objSelf => ..$objDefs }"
+            ) =>
+          Clz.extract(cls) match {
+            case Some(clz) =>
+              q"""
+                $cls
+                $mods object $objName extends { ..$objEarlyDefs } with ..$objParents { $objSelf =>
+                  ..$objDefs
+                  ..${instanceTree(clz)}
+                }
+              """ 
+            case None => reportUnexpectedError() 
+          }
+      case _ =>
+        c.abort(c.enclosingPosition, "@deriveMake can be applied only on case classes or classes")
+    }
+  }
+
+  private def reportUnexpectedError(): Nothing =
+    c.abort(c.enclosingPosition, "Something went wrong. Please file an issue")
 
   private def instanceTree(clz: Clz): Tree = {
     import clz._

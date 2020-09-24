@@ -14,6 +14,7 @@ object Example extends IOApp {
   trait Dep {
     def v: String
   }
+
   @autoMake
   case class DepImpl(v: String) extends Dep
 
@@ -41,7 +42,7 @@ object Example extends IOApp {
   case class End[F[_]](yo: Yohoho, yo2: Yohoho2)(implicit val l: Logging[F])
 
   override def run(args: List[String]): IO[ExitCode] = {
-    implicit val depMake = Make.pure[IO, Dep](new DepImpl("asdad"))
+    implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
 
     implicit val initString = Make.pure[IO, String]("asdasd")
 

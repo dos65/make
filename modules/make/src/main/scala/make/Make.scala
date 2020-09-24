@@ -42,7 +42,18 @@ object Make extends MakeTupleInstances with LowPrioMake {
 
   def resource[F[_], A: Tag](v: Resource[F, A]): Make[F, A] =
     Value(v, Tag.of[A])
+
+  implicit def contraMakeInstance[F[_]: Applicative, B, A](
+    implicit contra: ContraMake[B, A], m: Make[F, B], tag: Tag[A]
+  ): Make[F, A] = MakeOps.map(m)(contra.f)
 }
+
+final class ContraMake[B, A](private[make] val f: B => A)
+object ContraMake {
+  def widen[B, A >: B]: ContraMake[B, A] = new ContraMake[B, A](identity)
+  def apply[B, A](f: B => A): ContraMake[B, A] = new ContraMake[B, A](f)
+}
+
 
 trait LowPrioMake {
   implicit def debugInstance[F[_], A](implicit x: Debug[Make[F, A]]): Make[F, A] = x.v
