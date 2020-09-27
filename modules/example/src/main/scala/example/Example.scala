@@ -44,11 +44,18 @@ object Example extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
 
-    implicit val initString = Make.pure[IO, String]("asdasd")
+    type REff[A] = Resource[IO, A]
+    implicit val cef = new Make.Eff[REff] {
+      def map[A, B](fa: REff[A])(f: A => B): REff[B] = fa.map(f)
+      def pure[A](a: A): REff[A] = Resource.pure[IO, A](a)
+      def flatMap[A, B](fa: REff[A])(f: A => REff[B]): REff[B] = fa.flatMap(f)
+    }
+
+    implicit val initString = Make.pure[REff, String]("asdasd")
 
     import enableDebug._
-    val make = Make.debugOf[IO, End[IO]]
-    val resource = make.toResource
+    val make = Make.debugOf[REff, End[IO]]
+    val resource = make.toEff
     val f = for {
        _ <- resource.use(end => IO(println(end)))
     } yield ()

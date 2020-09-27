@@ -11,29 +11,28 @@ import make.Tag.SourcePos
 import cats.data.NonEmptyList
 import cats.implicits._
 import make.internal.Tarjans
+import make.Make.Eff
 
 final class Dag[F[_], A](
   entries: Map[Type, Dag.RawEntry[F]],
   targetTpe: Type
-)(implicit F: Applicative[F]) {
+)(implicit F: Eff[F]) {
 
-  def toResource: Resource[F, A] = {
+  def toEff: F[A] = {
     val order = initOrder
-
-    val init = Resource.make[F, Map[Type, Any]](F.pure(Map.empty))(_ => F.unit)
+    val init = F.pure(Map.empty[Type, Any])
 
     val rs = order.foldLeft(init){ case (rs, tpe) =>
-      rs.flatMap(depsMap => {
+      Eff[F].flatMap(rs)(depsMap => {
 
         val entry = entries(tpe)
         val input = entry.dependsOn.map(depsMap(_))
         val rsc = entry.f(input.toList)
-
-        rsc.map(v => depsMap.updated(tpe, v)) 
+        F.map(rsc)(v => depsMap.updated(tpe, v))
       })
     }
     
-    rs.map(values => values(targetTpe).asInstanceOf[A])
+    Eff[F].map(rs)(values => values(targetTpe).asInstanceOf[A])
   }
 
   private def initOrder: List[Type] = {
@@ -58,10 +57,10 @@ object Dag {
     tpe: Type,
     pos: Tag.SourcePos,
     dependsOn: List[Type],
-    f: List[Any] => Resource[F, Any]
+    f: List[Any] => F[Any] 
   )
 
-  def fromMake[F[_]: Applicative, A](v: Make[F, A]): Either[NonEmptyList[Conflict], Dag[F, A]] = {
+  def fromMake[F[_]: Eff, A](v: Make[F, A]): Either[NonEmptyList[Conflict], Dag[F, A]] = {
     val allEntriesMap = makeToAllEntriesMap(
       Map.empty,
       List(v.asInstanceOf[Make[F, Any]])
@@ -88,12 +87,12 @@ object Dag {
   }
 
   @tailrec
-  private def makeToAllEntriesMap[F[_]: Applicative](
+  private def makeToAllEntriesMap[F[_]: Eff](
     acc: Map[Type, List[RawEntry[F]]],
     stack: List[Make[F, Any]]
   ): Map[Type, List[RawEntry[F]]] = {
 
-    type HandleOut = (List[Any] => Resource[F, Any], List[Type], List[Make[F, Any]])
+    type HandleOut = (List[Any] => F[Any], List[Type], List[Make[F, Any]])
 
     def handleNode(v: Make[F, Any]): HandleOut = v match {
       case Make.Value(v, tag) => 
@@ -108,7 +107,7 @@ object Dag {
           (in: List[Any]) => {
             val a = in(0)
             val aToB = in(1).asInstanceOf[Any => Any]
-            Resource.pure[F, Any](aToB(a))
+            Eff[F].pure[Any](aToB(a))
           }
         val deps = List(
           prev.tag.typeTag.tpe,

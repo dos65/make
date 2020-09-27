@@ -80,7 +80,7 @@ object Boilerplate {
            |
            |trait MakeProductNOps extends MakeBasicOps {
            | 
-           -  def productN[Eff[_]: Applicative, ${`A..N`}](${`MakeA..MakeN`})(implicit $implictTags): Make[Eff, ${`(A..N)`}] =
+           -  def productN[Eff[_]: Make.Eff, ${`A..N`}](${`MakeA..MakeN`})(implicit $implictTags): Make[Eff, ${`(A..N)`}] =
            -    $impl
            |}
            """
@@ -125,7 +125,7 @@ object Boilerplate {
            |
            |trait MakeTupleInstances {
            | 
-           -  implicit def tuple$arity[Eff[_]: Applicative, ${`A..N`}](implicit $implicitValues): Make[Eff, ${`(A..N)`}] =
+           -  implicit def tuple$arity[Eff[_]: Make.Eff, ${`A..N`}](implicit $implicitValues): Make[Eff, ${`(A..N)`}] =
            -    MakeOps.productN($args)
            |}
            """
@@ -144,19 +144,15 @@ object Boilerplate {
            |package make
            |
            |import make.internal.MakeOps
-           |import cats.Applicative
            |import cats.effect.Resource
            |
            |object tupleNSyntaxClasses {
            -  class MakeTupleNSyntax$arity[Eff[_], ${`A..N`}](private val v: Make[Eff, ${`(A..N)`}]) extends AnyVal {
-           -    def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit Eff: Applicative[Eff]): Make[Eff, Res] =
+           -    def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit Eff: Make.Eff[Eff]): Make[Eff, Res] =
            -      MakeOps.map(v)({case ${`(a..n)`} => ff${`(a..n)`}})
            -
-           -    def mapFN[Res: Tag](ff: ${`(A..N)`} => Eff[Res])(implicit Eff: Applicative[Eff]): Make[Eff, Res] =
+           -    def mapFN[Res: Tag](ff: ${`(A..N)`} => Eff[Res])(implicit Eff: Make.Eff[Eff]): Make[Eff, Res] =
            -      MakeOps.mapF(v)({case ${`(a..n)`} => ff${`(a..n)`}})
-           -
-           -    def mapResourceN[Res: Tag](ff: ${`(A..N)`} => Resource[Eff, Res]): Make[Eff, Res] =
-           -      MakeOps.mapResource(v)({case ${`(a..n)`} => ff${`(a..n)`}})
            -  }
            |}
            """

@@ -101,7 +101,7 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
 
     val implicits =
       q"deps: _root_.make.Make[$effTpe, $tpe]" ::
-      q"${TermName(c.freshName())}: _root_.cats.Applicative[$effTpe]" :: 
+      q"${TermName(c.freshName())}: _root_.make.Make.Eff[$effTpe]" :: 
       implicitParams.toList ++
       (if (paramsTpe.isEmpty) List.empty else List(q"tag: _root_.make.Tag[$targetTpe]"))
       

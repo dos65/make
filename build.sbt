@@ -34,6 +34,21 @@ lazy val make = project.in(file("modules/make"))
     ),
   )
 
+lazy val makeZio = project.in(file("modules/zio"))
+  .dependsOn(make)
+  .settings(commonSettings)
+  .settings(
+    name := "make-zio",
+    scalacOptions ++= Seq(
+      "-language:experimental.macros"
+    ),
+    libraryDependencies += "org.scalameta" %% "munit" % "0.4.3" % "test",
+    testFrameworks += new TestFramework("munit.Framework"),
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio" % "1.0.1"
+    )
+  )
+
 lazy val example = project.in(file("modules/example"))
   .dependsOn(make)
   .settings(commonSettings)
