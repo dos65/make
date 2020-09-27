@@ -14,10 +14,12 @@ val commonSettings = Seq(
       Seq("-Ymacro-annotations")
     else
       Nil
-  }
+  },
+  libraryDependencies += "org.scalameta" %% "munit" % "0.4.3" % "test",
+  testFrameworks += new TestFramework("munit.Framework"),
 )
 
-lazy val make = project.in(file("modules/make"))
+lazy val core = project.in(file("modules/core"))
   .settings(commonSettings)
   .settings(
     name := "make",
@@ -25,17 +27,23 @@ lazy val make = project.in(file("modules/make"))
       "-language:experimental.macros"
     ),
     sourceGenerators in Compile += (sourceManaged in Compile).map(dir => Boilerplate.gen(dir)).taskValue,
-    libraryDependencies += "org.scalameta" %% "munit" % "0.4.3" % "test",
-    testFrameworks += new TestFramework("munit.Framework"),
     libraryDependencies ++= Seq(
-      "org.typelevel" %% "cats-core" % "2.1.1",
-      "org.typelevel" %% "cats-effect" % "2.1.3",
       "org.scala-lang" % "scala-reflect" % scalaVersion.value
     ),
   )
 
+lazy val catsEffect = project.in(file("modules/cats-effect"))
+  .dependsOn(core)
+  .settings(commonSettings)
+  .settings(
+    name := "make-cats-effect",
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "cats-effect" % "2.1.3"
+    ),
+  )
+
 lazy val makeZio = project.in(file("modules/zio"))
-  .dependsOn(make)
+  .dependsOn(core)
   .settings(commonSettings)
   .settings(
     name := "make-zio",
@@ -50,8 +58,14 @@ lazy val makeZio = project.in(file("modules/zio"))
   )
 
 lazy val example = project.in(file("modules/example"))
-  .dependsOn(make)
+  .dependsOn(core)
   .settings(commonSettings)
+  .settings(
+    name := "make-example",
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "cats-effect" % "2.1.3"
+    )
+  )
 
 def is213(v: String): Boolean = {
   CrossVersion.partialVersion(v) match {

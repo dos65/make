@@ -1,11 +1,5 @@
 package make
 
-import scala.reflect.ClassTag
-import scala.reflect.classTag
-
-import cats.Applicative
-import cats.effect.Resource
-
 import make.internal.MakeMacro
 import make.internal.MakeOps
 
@@ -40,23 +34,18 @@ object Make extends MakeTupleInstances with LowPrioMake {
   def value[F[_]: Eff, A: Tag](v: F[A]): Make[F, A] =
     Value(v, Tag.of[A])
 
-  // def pure[F[_]: Applicative, A: Tag](a: A): Make[F, A] =
-  //   Value(Resource.pure(a), Tag.of[A])
-
-  // def liftF[F[_]: Applicative, A: Tag](fa: F[A]): Make[F, A] =
-  //   Value(Resource.liftF(fa), Tag.of[A])
-
-  // def resource[F[_], A: Tag](v: Resource[F, A]): Make[F, A] =
-  //   Value(v, Tag.of[A])
-
-
   trait Eff[F[_]] {
     def map[A, B](fa: F[A])(f: A => B): F[B]
     def pure[A](a: A): F[A]
     def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B]
   }
+
   object Eff {
     def apply[F[_]](implicit eff: Eff[F]): Eff[F] = eff
+  }
+
+  trait EffError[F[_]] extends Eff[F] {
+    def raiseConflicts[A](v: Conflicts): F[A]
   }
 
   implicit def contraMakeInstance[F[_]: Eff, B, A](

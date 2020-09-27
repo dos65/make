@@ -1,15 +1,11 @@
 package make
 
 import scala.reflect.runtime.universe.Type
-import cats.effect.Resource
 import make.Make.Value
 import make.Make.Bind
 import make.Make.Ap
 import scala.annotation.tailrec
-import cats.Applicative
 import make.Tag.SourcePos
-import cats.data.NonEmptyList
-import cats.implicits._
 import make.internal.Tarjans
 import make.Make.Eff
 
@@ -60,19 +56,19 @@ object Dag {
     f: List[Any] => F[Any] 
   )
 
-  def fromMake[F[_]: Eff, A](v: Make[F, A]): Either[NonEmptyList[Conflict], Dag[F, A]] = {
+  def fromMake[F[_]: Eff, A](v: Make[F, A]): Either[Conflicts, Dag[F, A]] = {
     val allEntriesMap = makeToAllEntriesMap(
       Map.empty,
       List(v.asInstanceOf[Make[F, Any]])
     )
 
-    val init = (Map.empty[Type, RawEntry[F]], List.empty[Conflict])
+    val init = (Map.empty[Type, RawEntry[F]], List.empty[Conflicts.TpeConflict])
     val (okMap, errors) =
       allEntriesMap.foldLeft(init){
         case ((okAcc, errAcc), (tpe, entries)) =>
           val refs = entries.foldLeft(Set.empty[SourcePos]){case (acc, e) => acc + e.pos }
           if (refs.size > 1) {
-            val error = Conflict(tpe, refs.toList)
+            val error = Conflicts.TpeConflict(tpe, refs.toList)
             (okAcc, error :: errAcc)
           } else {
             val nextOk = okAcc.updated(tpe, entries.head)
@@ -80,10 +76,11 @@ object Dag {
           }
       }
     
-    NonEmptyList.fromList(errors) match {
-      case Some(nel) => nel.asLeft
-      case None => new Dag(okMap, v.tag.typeTag.tpe).asRight
-    }
+    if (errors.size > 0) {
+      Left(Conflicts(errors))
+    } else {
+      Right(new Dag(okMap, v.tag.typeTag.tpe))
+    } 
   }
 
   @tailrec

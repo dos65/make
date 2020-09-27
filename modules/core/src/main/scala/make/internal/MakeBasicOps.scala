@@ -2,8 +2,6 @@ package make.internal
 
 import make.Tag
 import make.Make
-import cats.Applicative
-import cats.effect.Resource
 import make.Make.Eff
 
 trait MakeBasicOps {

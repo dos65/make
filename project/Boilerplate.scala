@@ -76,7 +76,6 @@ object Boilerplate {
            |
            |import make.Make
            |import make.Tag
-           |import cats.Applicative
            |
            |trait MakeProductNOps extends MakeBasicOps {
            | 
@@ -121,7 +120,6 @@ object Boilerplate {
            |package make
            |
            |import make.internal.MakeOps
-           |import cats.Applicative
            |
            |trait MakeTupleInstances {
            | 
@@ -144,7 +142,6 @@ object Boilerplate {
            |package make
            |
            |import make.internal.MakeOps
-           |import cats.effect.Resource
            |
            |object tupleNSyntaxClasses {
            -  class MakeTupleNSyntax$arity[Eff[_], ${`A..N`}](private val v: Make[Eff, ${`(A..N)`}]) extends AnyVal {
@@ -171,7 +168,6 @@ object Boilerplate {
            |package make
            |
            |import make.internal.MakeOps
-           |import cats.Applicative
            |
            |trait MakeTupleSyntax {
            |
