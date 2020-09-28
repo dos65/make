@@ -7,7 +7,7 @@ import cats.effect.IOApp
 
 import make._
 import make.syntax._
-import cats.Applicative
+import make.cats.effect.implicits._
 
 object Example extends IOApp {
 
@@ -44,19 +44,10 @@ object Example extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
 
-    type REff[A] = Resource[IO, A]
-    implicit val cef = new Make.EffError[REff] {
-      def map[A, B](fa: REff[A])(f: A => B): REff[B] = fa.map(f)
-      def pure[A](a: A): REff[A] = Resource.pure[IO, A](a)
-      def flatMap[A, B](fa: REff[A])(f: A => REff[B]): REff[B] = fa.flatMap(f)
-      def raiseConflics[A](conflicts: Conflicts): REff[A] =
-        Resource.raiseError
-    }
-
-    implicit val initString = Make.pure[REff, String]("asdasd")
+    implicit val initString = Make.value(Resource.pure[IO, String]("asdasd"))
 
     import enableDebug._
-    val make = Make.debugOf[REff, End[IO]]
+    val make = Make.debugOf[Resource[IO, ?], End[IO]]
     val resource = make.toEff
     val f = for {
        _ <- resource.use(end => IO(println(end)))

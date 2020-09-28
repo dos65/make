@@ -22,7 +22,7 @@ val commonSettings = Seq(
 lazy val core = project.in(file("modules/core"))
   .settings(commonSettings)
   .settings(
-    name := "make",
+    name := "make-core",
     scalacOptions ++= Seq(
       "-language:experimental.macros"
     ),
@@ -58,13 +58,11 @@ lazy val makeZio = project.in(file("modules/zio"))
   )
 
 lazy val example = project.in(file("modules/example"))
-  .dependsOn(core)
+  .dependsOn(catsEffect)
   .settings(commonSettings)
   .settings(
     name := "make-example",
-    libraryDependencies ++= Seq(
-      "org.typelevel" %% "cats-effect" % "2.1.3"
-    )
+    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
   )
 
 def is213(v: String): Boolean = {
