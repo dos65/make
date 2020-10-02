@@ -24,12 +24,8 @@ final class MakeBasicSyntax[F[_], A](private val m: Make[F, A]) extends AnyVal {
 
   def toEff(implicit F: EffError[F]): F[A] = {
     toDag match {
-      case Left(conflicts) =>
-        // // TODO
-        // val err = new Exception(s"Conflits: ${conflicts.map(_.toString).mkString_(",")}")
-        F.raiseConflicts(conflicts)
-      case Right(dag) =>
-        dag.toEff
+      case Left(conflicts) => F.raiseConflicts(conflicts)
+      case Right(dag) => dag.toEff
     }
   }
 }

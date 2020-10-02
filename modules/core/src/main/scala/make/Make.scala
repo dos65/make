@@ -31,7 +31,7 @@ object Make extends MakeTupleInstances with LowPrioMake {
   def pure[F[_]: Eff, A: Tag](a: A): Make[F, A] =
     Value(Eff[F].pure(a), Tag.of[A])
 
-  def value[F[_]: Eff, A: Tag](v: F[A]): Make[F, A] =
+  def eff[F[_]: Eff, A: Tag](v: F[A]): Make[F, A] =
     Value(v, Tag.of[A])
 
   trait Eff[F[_]] {

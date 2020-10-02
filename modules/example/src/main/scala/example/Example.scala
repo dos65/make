@@ -18,11 +18,6 @@ object Example extends IOApp {
   @autoMake
   case class DepImpl(v: String) extends Dep
 
-  trait Logging[F[_]]
-  object Logging {
-    implicit def inst[F[_]]: Logging[F] = null
-  }
-
   @autoMake
   case class Hoho(dep: Dep)
 
@@ -39,15 +34,19 @@ object Example extends IOApp {
   )
 
   @autoMake
-  case class End[F[_]](yo: Yohoho, yo2: Yohoho2)(implicit val l: Logging[F])
+  class End(yo: Yohoho, yo2: Yohoho2)
+
+  // TODO doesn't work with not used F[_]
+  // @autoMake
+  // class End[F[_]](yo: Yohoho, yo2: Yohoho2)
 
   override def run(args: List[String]): IO[ExitCode] = {
     implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
 
-    implicit val initString = Make.value(Resource.pure[IO, String]("asdasd"))
+    implicit val initString = Make.eff(Resource.pure[IO, String]("asdasd"))
 
     import enableDebug._
-    val make = Make.debugOf[Resource[IO, ?], End[IO]]
+    val make = Make.debugOf[Resource[IO, ?], End]
     val resource = make.toEff
     val f = for {
        _ <- resource.use(end => IO(println(end)))

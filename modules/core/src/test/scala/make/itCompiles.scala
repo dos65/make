@@ -10,6 +10,8 @@ import cats.effect.Sync
   */
 object itCompiles {
 
+  import ioEff._
+
   object annotations {
 
     @autoMake

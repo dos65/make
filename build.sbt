@@ -28,7 +28,8 @@ lazy val core = project.in(file("modules/core"))
     ),
     sourceGenerators in Compile += (sourceManaged in Compile).map(dir => Boilerplate.gen(dir)).taskValue,
     libraryDependencies ++= Seq(
-      "org.scala-lang" % "scala-reflect" % scalaVersion.value
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "org.typelevel" %% "cats-effect" % "2.1.3" % "test"
     ),
   )
 
