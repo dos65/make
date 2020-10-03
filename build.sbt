@@ -33,7 +33,7 @@ lazy val core = project.in(file("modules/core"))
     ),
   )
 
-lazy val catsEffect = project.in(file("modules/cats-effect"))
+lazy val makeCatsEffect = project.in(file("modules/cats-effect"))
   .dependsOn(core)
   .settings(commonSettings)
   .settings(
@@ -59,7 +59,7 @@ lazy val makeZio = project.in(file("modules/zio"))
   )
 
 lazy val example = project.in(file("modules/example"))
-  .dependsOn(catsEffect)
+  .dependsOn(makeCatsEffect, makeZio)
   .settings(commonSettings)
   .settings(
     name := "make-example",
