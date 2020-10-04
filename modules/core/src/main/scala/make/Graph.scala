@@ -18,7 +18,7 @@ final class Graph[F[_], A](
     val order = initOrder
     val init = F.pure(Map.empty[Type, Any])
 
-    val rs = order.foldLeft(init){ case (rs, tpe) =>
+    val rs = order.foldLeft(init) { case (rs, tpe) =>
       MakeEff[F].flatMap(rs)(depsMap => {
 
         val entry = entries(tpe)
@@ -27,22 +27,24 @@ final class Graph[F[_], A](
         F.map(rsc)(v => depsMap.updated(tpe, v))
       })
     }
-    
+
     MakeEff[F].map(rs)(values => values(targetTpe).asInstanceOf[A])
   }
 
   private def initOrder: List[Type] = {
     val indexedKeys = entries.keys.zipWithIndex.toMap
-    val indexedMap = indexedKeys.map {case (tpe, _) =>
+    val indexedMap = indexedKeys.map { case (tpe, _) =>
       val entry = entries(tpe)
       entry.dependsOn.map(indexedKeys(_)).toList
     }.toList
     val sorted = Tarjans.apply(indexedMap)
 
-    sorted.flatten.map(i => {
-      val (tpe, idx) = indexedKeys.find(_._2 == i).get
-      tpe
-    }).toList
+    sorted.flatten
+      .map(i => {
+        val (tpe, idx) = indexedKeys.find(_._2 == i).get
+        tpe
+      })
+      .toList
   }
 
 }
@@ -53,7 +55,7 @@ object Graph {
     tpe: Type,
     pos: Tag.SourcePos,
     dependsOn: List[Type],
-    f: List[Any] => F[Any] 
+    f: List[Any] => F[Any]
   )
 
   def fromMake[F[_]: MakeEff, A](v: Make[F, A]): Either[Conflicts, Graph[F, A]] = {
@@ -64,23 +66,22 @@ object Graph {
 
     val init = (Map.empty[Type, RawEntry[F]], List.empty[Conflicts.TpeConflict])
     val (okMap, errors) =
-      allEntriesMap.foldLeft(init){
-        case ((okAcc, errAcc), (tpe, entries)) =>
-          val refs = entries.foldLeft(Set.empty[SourcePos]){case (acc, e) => acc + e.pos }
-          if (refs.size > 1) {
-            val error = Conflicts.TpeConflict(tpe, refs.toList)
-            (okAcc, error :: errAcc)
-          } else {
-            val nextOk = okAcc.updated(tpe, entries.head)
-            (nextOk, errAcc)
-          }
+      allEntriesMap.foldLeft(init) { case ((okAcc, errAcc), (tpe, entries)) =>
+        val refs = entries.foldLeft(Set.empty[SourcePos]) { case (acc, e) => acc + e.pos }
+        if (refs.size > 1) {
+          val error = Conflicts.TpeConflict(tpe, refs.toList)
+          (okAcc, error :: errAcc)
+        } else {
+          val nextOk = okAcc.updated(tpe, entries.head)
+          (nextOk, errAcc)
+        }
       }
-    
+
     if (errors.size > 0) {
       Left(Conflicts(errors))
     } else {
       Right(new Graph(okMap, v.tag.typeTag.tpe))
-    } 
+    }
   }
 
   @tailrec
@@ -92,7 +93,7 @@ object Graph {
     type HandleOut = (List[Any] => F[Any], List[Type], List[Make[F, Any]])
 
     def handleNode(v: Make[F, Any]): HandleOut = v match {
-      case Make.Value(v, tag) => 
+      case Make.Value(v, tag) =>
         ((_: List[Any]) => v, List.empty, List.empty)
       case Make.Bind(prev, f, tag) =>
         val func = (in: List[Any]) => f(in(0))
@@ -100,7 +101,7 @@ object Graph {
         val other = List(prev)
         (func, deps, other)
       case Make.Ap(prev, op, tag) =>
-        val func = 
+        val func =
           (in: List[Any]) => {
             val a = in(0)
             val aToB = in(1).asInstanceOf[Any => Any]

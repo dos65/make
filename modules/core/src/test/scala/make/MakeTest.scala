@@ -27,5 +27,5 @@ class MakeTest extends FunSuite {
     assert(a.toGraph.isRight)
     assert(b.toGraph.isLeft)
   }
-  
+
 }

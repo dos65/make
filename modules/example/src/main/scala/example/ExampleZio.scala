@@ -32,17 +32,17 @@ object ExampleZio extends App {
   @autoMake
   class End(yo: Yohoho, yo2: Yohoho2)
 
-  override def run(args: List[String]): URIO[ZEnv,ExitCode] = {
+  override def run(args: List[String]): URIO[ZEnv, ExitCode] = {
 
-    // For ZIO it's required to define MakeEff TC manually to specify R, E 
+    // For ZIO it's required to define MakeEff TC manually to specify R, E
     type MakeZManaged[A] = ZManaged[Console, Nothing, A]
     implicit val zmanagedEff =
       new MakeEff[MakeZManaged] {
         def map[A, B](fa: MakeZManaged[A])(f: A => B): MakeZManaged[B] = fa.map(f)
         def pure[A](a: A): MakeZManaged[A] = ZManaged.effectTotal(a)
-        def flatMap[A, B](fa: MakeZManaged[A])(f: A => MakeZManaged[B]): MakeZManaged[B] = fa.flatMap(f)
+        def flatMap[A, B](fa: MakeZManaged[A])(f: A => MakeZManaged[B]): MakeZManaged[B] =
+          fa.flatMap(f)
       }
-
 
     implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
     implicit val initString = Make.eff[MakeZManaged, String](

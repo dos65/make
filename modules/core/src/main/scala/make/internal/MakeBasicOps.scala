@@ -16,7 +16,7 @@ trait MakeBasicOps {
   def mapF[F[_]: MakeEff, A, B: Tag](ma: Make[F, A])(f: A => F[B]): Make[F, B] =
     Make.Bind(
       ma,
-      (a: A) =>  f(a),
+      (a: A) => f(a),
       Tag.of[B]
     )
 

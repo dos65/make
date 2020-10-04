@@ -12,12 +12,11 @@ object Tarjans {
     var time = 0
     val lowlink = new Array[Int](n)
     val components = mutable.ArrayBuffer.empty[Seq[Int]]
-    
-    
+
     for (u <- 0 until n) {
       if (!visited(u)) dfs(u)
     }
-    
+
     def dfs(u: Int): Unit = {
       lowlink(u) = time
       time += 1
@@ -33,7 +32,7 @@ object Tarjans {
       }
       if (isComponentRoot) {
         val component = mutable.Buffer.empty[Int]
-        
+
         var done = false
         while (!done) {
           val x = stack.last
@@ -48,4 +47,3 @@ object Tarjans {
     components.toSeq
   }
 }
-
