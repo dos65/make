@@ -52,7 +52,7 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
 
     val mapF = if (params.size > 1) q"($create).tupled" else create
 
-    val effTpe = TermName(c.freshName("MakeEff")).toTypeName
+    val effTpe = TermName(c.freshName("E")).toTypeName
     
     val targetTpe = 
       if (typeParams.isEmpty)
@@ -62,7 +62,7 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
 
     val implicits =
       q"deps: _root_.make.Make[$effTpe, $tpe]" ::
-      q"${TermName(c.freshName())}: _root_.make.Make.Eff[$effTpe]" :: 
+      q"${TermName(c.freshName())}: _root_.make.MakeEff[$effTpe]" :: 
       implicitParams.toList ++
       (if (paramsTpe.isEmpty) List.empty else List(q"tag: _root_.make.Tag[$targetTpe]"))
       

@@ -1,3 +1,5 @@
+import sbt.addCompilerPlugin
+
 val commonSettings = Seq(
   scalaVersion := "2.13.3",
   organization := "io.github.dos65",
@@ -41,28 +43,17 @@ lazy val makeCatsEffect = project.in(file("modules/cats-effect"))
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-effect" % "2.1.3"
     ),
-  )
-
-lazy val makeZio = project.in(file("modules/zio"))
-  .dependsOn(core)
-  .settings(commonSettings)
-  .settings(
-    name := "make-zio",
-    scalacOptions ++= Seq(
-      "-language:experimental.macros"
-    ),
-    libraryDependencies += "org.scalameta" %% "munit" % "0.4.3" % "test",
-    testFrameworks += new TestFramework("munit.Framework"),
-    libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % "1.0.1"
-    )
+    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
   )
 
 lazy val example = project.in(file("modules/example"))
-  .dependsOn(makeCatsEffect, makeZio)
+  .dependsOn(makeCatsEffect)
   .settings(commonSettings)
   .settings(
     name := "make-example",
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio" % "1.0.1"
+    ),
     addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
   )
 

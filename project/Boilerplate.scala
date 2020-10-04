@@ -75,11 +75,12 @@ object Boilerplate {
            |package make.internal
            |
            |import make.Make
+           |import make.MakeEff
            |import make.Tag
            |
            |trait MakeProductNOps extends MakeBasicOps {
            | 
-           -  def productN[Eff[_]: Make.Eff, ${`A..N`}](${`MakeA..MakeN`})(implicit $implictTags): Make[Eff, ${`(A..N)`}] =
+           -  def productN[Eff[_]: MakeEff, ${`A..N`}](${`MakeA..MakeN`})(implicit $implictTags): Make[Eff, ${`(A..N)`}] =
            -    $impl
            |}
            """
@@ -119,11 +120,12 @@ object Boilerplate {
       block"""
            |package make
            |
+           |import make.MakeEff
            |import make.internal.MakeOps
            |
            |trait MakeTupleInstances {
            | 
-           -  implicit def tuple$arity[Eff[_]: Make.Eff, ${`A..N`}](implicit $implicitValues): Make[Eff, ${`(A..N)`}] =
+           -  implicit def tuple$arity[Eff[_]: MakeEff, ${`A..N`}](implicit $implicitValues): Make[Eff, ${`(A..N)`}] =
            -    MakeOps.productN($args)
            |}
            """
@@ -141,14 +143,15 @@ object Boilerplate {
       block"""
            |package make
            |
+           |import make.MakeEff
            |import make.internal.MakeOps
            |
            |object tupleNSyntaxClasses {
            -  class MakeTupleNSyntax$arity[Eff[_], ${`A..N`}](private val v: Make[Eff, ${`(A..N)`}]) extends AnyVal {
-           -    def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit Eff: Make.Eff[Eff]): Make[Eff, Res] =
+           -    def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit Eff: MakeEff[Eff]): Make[Eff, Res] =
            -      MakeOps.map(v)({case ${`(a..n)`} => ff${`(a..n)`}})
            -
-           -    def mapFN[Res: Tag](ff: ${`(A..N)`} => Eff[Res])(implicit Eff: Make.Eff[Eff]): Make[Eff, Res] =
+           -    def mapFN[Res: Tag](ff: ${`(A..N)`} => Eff[Res])(implicit Eff: MakeEff[Eff]): Make[Eff, Res] =
            -      MakeOps.mapF(v)({case ${`(a..n)`} => ff${`(a..n)`}})
            -  }
            |}

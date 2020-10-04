@@ -28,27 +28,14 @@ object Make extends MakeTupleInstances with LowPrioMake {
     tag: Tag[A]
   ) extends Make[F, A]
 
-  def pure[F[_]: Eff, A: Tag](a: A): Make[F, A] =
-    Value(Eff[F].pure(a), Tag.of[A])
+  def pure[F[_]: MakeEff, A: Tag](a: A): Make[F, A] =
+    Value(MakeEff[F].pure(a), Tag.of[A])
 
-  def eff[F[_]: Eff, A: Tag](v: F[A]): Make[F, A] =
+  def eff[F[_]: MakeEff, A: Tag](v: F[A]): Make[F, A] =
     Value(v, Tag.of[A])
 
-  trait Eff[F[_]] {
-    def map[A, B](fa: F[A])(f: A => B): F[B]
-    def pure[A](a: A): F[A]
-    def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B]
-  }
 
-  object Eff {
-    def apply[F[_]](implicit eff: Eff[F]): Eff[F] = eff
-  }
-
-  trait EffError[F[_]] extends Eff[F] {
-    def raiseConflicts[A](v: Conflicts): F[A]
-  }
-
-  implicit def contraMakeInstance[F[_]: Eff, B, A](
+  implicit def contraMakeInstance[F[_]: MakeEff, B, A](
     implicit contra: ContraMake[B, A], m: Make[F, B], tag: Tag[A]
   ): Make[F, A] = MakeOps.map(m)(contra.f)
 }

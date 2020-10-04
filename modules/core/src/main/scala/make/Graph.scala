@@ -7,19 +7,19 @@ import make.Make.Ap
 import scala.annotation.tailrec
 import make.Tag.SourcePos
 import make.internal.Tarjans
-import make.Make.Eff
+import make.MakeEff
 
-final class Dag[F[_], A](
-  entries: Map[Type, Dag.RawEntry[F]],
+final class Graph[F[_], A](
+  entries: Map[Type, Graph.RawEntry[F]],
   targetTpe: Type
-)(implicit F: Eff[F]) {
+)(implicit F: MakeEff[F]) {
 
-  def toEff: F[A] = {
+  def initEff: F[A] = {
     val order = initOrder
     val init = F.pure(Map.empty[Type, Any])
 
     val rs = order.foldLeft(init){ case (rs, tpe) =>
-      Eff[F].flatMap(rs)(depsMap => {
+      MakeEff[F].flatMap(rs)(depsMap => {
 
         val entry = entries(tpe)
         val input = entry.dependsOn.map(depsMap(_))
@@ -28,7 +28,7 @@ final class Dag[F[_], A](
       })
     }
     
-    Eff[F].map(rs)(values => values(targetTpe).asInstanceOf[A])
+    MakeEff[F].map(rs)(values => values(targetTpe).asInstanceOf[A])
   }
 
   private def initOrder: List[Type] = {
@@ -47,7 +47,7 @@ final class Dag[F[_], A](
 
 }
 
-object Dag {
+object Graph {
 
   case class RawEntry[F[_]](
     tpe: Type,
@@ -56,7 +56,7 @@ object Dag {
     f: List[Any] => F[Any] 
   )
 
-  def fromMake[F[_]: Eff, A](v: Make[F, A]): Either[Conflicts, Dag[F, A]] = {
+  def fromMake[F[_]: MakeEff, A](v: Make[F, A]): Either[Conflicts, Graph[F, A]] = {
     val allEntriesMap = makeToAllEntriesMap(
       Map.empty,
       List(v.asInstanceOf[Make[F, Any]])
@@ -79,12 +79,12 @@ object Dag {
     if (errors.size > 0) {
       Left(Conflicts(errors))
     } else {
-      Right(new Dag(okMap, v.tag.typeTag.tpe))
+      Right(new Graph(okMap, v.tag.typeTag.tpe))
     } 
   }
 
   @tailrec
-  private def makeToAllEntriesMap[F[_]: Eff](
+  private def makeToAllEntriesMap[F[_]: MakeEff](
     acc: Map[Type, List[RawEntry[F]]],
     stack: List[Make[F, Any]]
   ): Map[Type, List[RawEntry[F]]] = {
@@ -104,7 +104,7 @@ object Dag {
           (in: List[Any]) => {
             val a = in(0)
             val aToB = in(1).asInstanceOf[Any => Any]
-            Eff[F].pure[Any](aToB(a))
+            MakeEff[F].pure[Any](aToB(a))
           }
         val deps = List(
           prev.tag.typeTag.tpe,
