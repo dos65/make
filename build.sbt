@@ -1,6 +1,6 @@
-import sbt.addCompilerPlugin
+import xerial.sbt.Sonatype._
 
-val commonSettings = Seq(
+lazy val commonSettings = Seq(
   scalaVersion := "2.13.3",
   organization := "io.github.dos65",
   version := "0.0.1",
@@ -21,8 +21,18 @@ val commonSettings = Seq(
   testFrameworks += new TestFramework("munit.Framework"),
 )
 
+lazy val publishSettings = Seq(
+  publishMavenStyle := true,
+  publishTo := sonatypePublishToBundle.value,
+  sonatypeProfileName := "io.github.dos65",
+  sonatypeProjectHosting := Some(GitHubHosting("dos65", "make", "qtankle@gmail.com")),
+  licenses := Seq("Apache 2.0 License" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+  sonatypeBundleDirectory := (ThisBuild / baseDirectory).value / "target" / "sonatype-staging" / s"${version.value}"
+)
+
 lazy val core = project.in(file("modules/core"))
   .settings(commonSettings)
+  .settings(publishSettings)
   .settings(
     name := "make-core",
     scalacOptions ++= Seq(
@@ -38,6 +48,7 @@ lazy val core = project.in(file("modules/core"))
 lazy val makeCatsEffect = project.in(file("modules/cats-effect"))
   .dependsOn(core)
   .settings(commonSettings)
+  .settings(publishSettings)
   .settings(
     name := "make-cats-effect",
     libraryDependencies ++= Seq(
@@ -54,8 +65,18 @@ lazy val example = project.in(file("modules/example"))
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % "1.0.1"
     ),
-    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
+    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
+    skip in publish := true
   )
+
+lazy val rootProject = project.in(file("."))
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .settings(
+    name := "make",
+    skip in publish := true
+  )
+  .aggregate(core, makeCatsEffect)
 
 def is213(v: String): Boolean = {
   CrossVersion.partialVersion(v) match {
