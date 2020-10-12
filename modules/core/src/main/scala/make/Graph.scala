@@ -7,19 +7,20 @@ import make.Make.Ap
 import scala.annotation.tailrec
 import make.Tag.SourcePos
 import make.internal.Tarjans
-import make.MakeEff
+import cats.Monad
+import cats.Applicative
 
 final class Graph[F[_], A](
   entries: Map[Type, Graph.RawEntry[F]],
   targetTpe: Type
-)(implicit F: MakeEff[F]) {
+)(implicit F: Monad[F]) {
 
   def initEff: F[A] = {
     val order = initOrder
     val init = F.pure(Map.empty[Type, Any])
 
     val rs = order.foldLeft(init) { case (rs, tpe) =>
-      MakeEff[F].flatMap(rs)(depsMap => {
+      F.flatMap(rs)(depsMap => {
 
         val entry = entries(tpe)
         val input = entry.dependsOn.map(depsMap(_))
@@ -28,7 +29,7 @@ final class Graph[F[_], A](
       })
     }
 
-    MakeEff[F].map(rs)(values => values(targetTpe).asInstanceOf[A])
+    F.map(rs)(values => values(targetTpe).asInstanceOf[A])
   }
 
   private def initOrder: List[Type] = {
@@ -58,7 +59,7 @@ object Graph {
     f: List[Any] => F[Any]
   )
 
-  def fromMake[F[_]: MakeEff, A](v: Make[F, A]): Either[Conflicts, Graph[F, A]] = {
+  def fromMake[F[_]: Monad, A](v: Make[F, A]): Either[Conflicts, Graph[F, A]] = {
     val allEntriesMap = makeToAllEntriesMap(
       Map.empty,
       List(v.asInstanceOf[Make[F, Any]])
@@ -85,7 +86,7 @@ object Graph {
   }
 
   @tailrec
-  private def makeToAllEntriesMap[F[_]: MakeEff](
+  private def makeToAllEntriesMap[F[_]: Applicative](
     acc: Map[Type, List[RawEntry[F]]],
     stack: List[Make[F, Any]]
   ): Map[Type, List[RawEntry[F]]] = {
@@ -105,7 +106,7 @@ object Graph {
           (in: List[Any]) => {
             val a = in(0)
             val aToB = in(1).asInstanceOf[Any => Any]
-            MakeEff[F].pure[Any](aToB(a))
+            Applicative[F].pure[Any](aToB(a))
           }
         val deps = List(
           prev.tag.typeTag.tpe,

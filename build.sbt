@@ -30,40 +30,31 @@ lazy val publishSettings = Seq(
   sonatypeBundleDirectory := (ThisBuild / baseDirectory).value / "target" / "sonatype-staging" / s"${version.value}"
 )
 
-lazy val core = project.in(file("modules/core"))
+lazy val make = project.in(file("modules/core"))
   .settings(commonSettings)
   .settings(publishSettings)
   .settings(
-    name := "make-core",
+    name := "make",
     scalacOptions ++= Seq(
       "-language:experimental.macros"
     ),
     sourceGenerators in Compile += (sourceManaged in Compile).map(dir => Boilerplate.gen(dir)).taskValue,
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "org.typelevel" %% "cats-core" % "2.1.1",
       "org.typelevel" %% "cats-effect" % "2.1.3" % "test"
     ),
   )
 
-lazy val makeCatsEffect = project.in(file("modules/cats-effect"))
-  .dependsOn(core)
-  .settings(commonSettings)
-  .settings(publishSettings)
-  .settings(
-    name := "make-cats-effect",
-    libraryDependencies ++= Seq(
-      "org.typelevel" %% "cats-effect" % "2.1.3"
-    ),
-    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
-  )
-
 lazy val example = project.in(file("modules/example"))
-  .dependsOn(makeCatsEffect)
+  .dependsOn(make)
   .settings(commonSettings)
   .settings(
     name := "make-example",
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % "1.0.1"
+      "org.typelevel" %% "cats-effect" % "2.1.3",
+      "dev.zio" %% "zio" % "1.0.1",
+      "dev.zio" %% "zio-interop-cats" % "2.1.4.0",
     ),
     addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
     skip in publish := true
@@ -73,10 +64,10 @@ lazy val rootProject = project.in(file("."))
   .settings(commonSettings)
   .settings(publishSettings)
   .settings(
-    name := "make",
+    name := "make-root",
     skip in publish := true
   )
-  .aggregate(core, makeCatsEffect)
+  .aggregate(core)
 
 def is213(v: String): Boolean = {
   CrossVersion.partialVersion(v) match {

@@ -5,6 +5,8 @@ import zio.console._
 import make._
 import make.syntax._
 
+import zio.interop.catz._
+
 object ExampleZio extends App {
 
   trait Dep {
@@ -34,28 +36,19 @@ object ExampleZio extends App {
 
   override def run(args: List[String]): URIO[ZEnv, ExitCode] = {
 
-    // For ZIO it's required to define MakeEff TC manually to specify R, E
-    type MakeZManaged[A] = ZManaged[Console, Nothing, A]
-    implicit val zmanagedEff =
-      new MakeEff[MakeZManaged] {
-        def map[A, B](fa: MakeZManaged[A])(f: A => B): MakeZManaged[B] = fa.map(f)
-        def pure[A](a: A): MakeZManaged[A] = ZManaged.effectTotal(a)
-        def flatMap[A, B](fa: MakeZManaged[A])(f: A => MakeZManaged[B]): MakeZManaged[B] =
-          fa.flatMap(f)
-      }
-
     implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
-    implicit val initString = Make.eff[MakeZManaged, String](
-      ZManaged.make(putStrLn("Yoyo") *> ZIO.effectTotal("asd"))(_ => putStrLn("Close"))
+
+    implicit val initString = Make.eff[RManaged[Any, ?], String](
+      ZManaged.effect("asd")
     )
 
     import enableDebug._
-    val value = Make.debugOf[MakeZManaged, End]
+    val value = Make.debugOf[RManaged[Any, ?], End]
 
     for {
       graph <- ZIO.fromEither(value.toGraph).orDie
       zmanaged = graph.initEff
-      _ <- zmanaged.use(r => putStrLn(r.toString))
+      _ <- zmanaged.orDie.use(r => putStrLn(r.toString))
     } yield ExitCode.success
   }
 }

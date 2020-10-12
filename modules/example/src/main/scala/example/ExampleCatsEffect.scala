@@ -7,7 +7,7 @@ import cats.effect.IOApp
 
 import make._
 import make.syntax._
-import make.ce.resource._
+// import make.ce.resource._
 
 object ExampleCatsEffect extends IOApp {
 
@@ -46,7 +46,7 @@ object ExampleCatsEffect extends IOApp {
     implicit val initString = Make.eff(Resource.pure[IO, String]("asdasd"))
 
     import enableDebug._
-    val make = Make.debugOf[IOResource, End]
+    val make = Make.debugOf[Resource[IO, ?], End]
 
     for {
       graph <- IO.fromEither(make.toGraph)

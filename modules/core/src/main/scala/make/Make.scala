@@ -2,6 +2,7 @@ package make
 
 import make.internal.MakeMacro
 import make.internal.MakeOps
+import cats.Applicative
 
 sealed abstract class Make[F[_], A] { self =>
   def tag: Tag[A]
@@ -28,13 +29,13 @@ object Make extends MakeTupleInstances with LowPrioMake {
     tag: Tag[A]
   ) extends Make[F, A]
 
-  def pure[F[_]: MakeEff, A: Tag](a: A): Make[F, A] =
-    Value(MakeEff[F].pure(a), Tag.of[A])
+  def pure[F[_]: Applicative, A: Tag](a: A): Make[F, A] =
+    Value(Applicative[F].pure(a), Tag.of[A])
 
-  def eff[F[_]: MakeEff, A: Tag](v: F[A]): Make[F, A] =
+  def eff[F[_], A: Tag](v: F[A]): Make[F, A] =
     Value(v, Tag.of[A])
 
-  implicit def contraMakeInstance[F[_]: MakeEff, B, A](implicit
+  implicit def contraMakeInstance[F[_]: Applicative, B, A](implicit
     contra: ContraMake[B, A],
     m: Make[F, B],
     tag: Tag[A]

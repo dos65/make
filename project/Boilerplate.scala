@@ -75,12 +75,12 @@ object Boilerplate {
            |package make.internal
            |
            |import make.Make
-           |import make.MakeEff
            |import make.Tag
+           |import cats.Applicative
            |
            |trait MakeProductNOps extends MakeBasicOps {
            | 
-           -  def productN[Eff[_]: MakeEff, ${`A..N`}](${`MakeA..MakeN`})(implicit $implictTags): Make[Eff, ${`(A..N)`}] =
+           -  def productN[FF[_]: Applicative, ${`A..N`}](${`MakeA..MakeN`})(implicit $implictTags): Make[FF, ${`(A..N)`}] =
            -    $impl
            |}
            """
@@ -110,7 +110,7 @@ object Boilerplate {
       val deps = (0 until arity).map(n => {
         val tpe = (n+'A').toChar
         val arg = (n+'a').toChar
-        s"$arg: Make[Eff, $tpe]"
+        s"$arg: Make[FF, $tpe]"
       })
       val args = synVals.mkString(",")
 
@@ -120,12 +120,12 @@ object Boilerplate {
       block"""
            |package make
            |
-           |import make.MakeEff
            |import make.internal.MakeOps
+           |import cats.Applicative
            |
            |trait MakeTupleInstances {
            | 
-           -  implicit def tuple$arity[Eff[_]: MakeEff, ${`A..N`}](implicit $implicitValues): Make[Eff, ${`(A..N)`}] =
+           -  implicit def tuple$arity[FF[_]: Applicative, ${`A..N`}](implicit $implicitValues): Make[FF, ${`(A..N)`}] =
            -    MakeOps.productN($args)
            |}
            """
@@ -143,15 +143,15 @@ object Boilerplate {
       block"""
            |package make
            |
-           |import make.MakeEff
            |import make.internal.MakeOps
+           |import cats.Applicative
            |
            |object tupleNSyntaxClasses {
-           -  class MakeTupleNSyntax$arity[Eff[_], ${`A..N`}](private val v: Make[Eff, ${`(A..N)`}]) extends AnyVal {
-           -    def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit Eff: MakeEff[Eff]): Make[Eff, Res] =
+           -  class MakeTupleNSyntax$arity[FF[_], ${`A..N`}](private val v: Make[FF, ${`(A..N)`}]) extends AnyVal {
+           -    def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit FF: Applicative[FF]): Make[FF, Res] =
            -      MakeOps.map(v)({case ${`(a..n)`} => ff${`(a..n)`}})
            -
-           -    def mapFN[Res: Tag](ff: ${`(A..N)`} => Eff[Res])(implicit Eff: MakeEff[Eff]): Make[Eff, Res] =
+           -    def mapFN[Res: Tag](ff: ${`(A..N)`} => FF[Res])(implicit FF: Applicative[FF]): Make[FF, Res] =
            -      MakeOps.mapF(v)({case ${`(a..n)`} => ff${`(a..n)`}})
            -  }
            |}
@@ -171,10 +171,11 @@ object Boilerplate {
            |package make
            |
            |import make.internal.MakeOps
+           |import cats.Applicative
            |
            |trait MakeTupleSyntax {
            |
-           -  implicit def makeToTupleNSyntax$arity[Eff[_], ${`A..N`}](make: Make[Eff, ${`(A..N)`}]) =
+           -  implicit def makeToTupleNSyntax$arity[FF[_], ${`A..N`}](make: Make[FF, ${`(A..N)`}]) =
            -    new tupleNSyntaxClasses.MakeTupleNSyntax$arity(make)
            -
            |}
@@ -206,7 +207,7 @@ object Boilerplate {
     val synTypedVals = (synVals zip synTypes) map { case (v,t) => v + ":" + t}
 
     val `A..N`       = synTypes.mkString(", ")
-    val `MakeA..MakeN` = (synVals zip synTypes.map(t => s"Make[Eff, $t]")) map { case (v, t) => s"$v: $t"} mkString(",")
+    val `MakeA..MakeN` = (synVals zip synTypes.map(t => s"Make[FF, $t]")) map { case (v, t) => s"$v: $t"} mkString(",")
 
     val `(A..N)`     = if (arity == 1) "Tuple1[A]" else synTypes.mkString("(", ", ", ")")
     val `(a..n)`     = if (arity == 1) "Tuple1(a)" else synVals.mkString("(", ", ", ")")
