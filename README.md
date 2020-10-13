@@ -10,54 +10,138 @@ that makes it usage close to usual Scala code and provides compile-time checks.
 libraryDependencies += "io.github.dos65" %% "make" % "0.0.2"
 ```
 
-### Concept
+Imports:
+```scala
+import make._
+import make.syntax._
+```
 
-Let's say that there is the following typeclass which describes how to instantiate `F[A]` where:
-- `F[_]` is an initialization effect
-- `A` a target type
+### Defining instances
 
+Speaking roughly, `Make` might be treaten as a typecless with the following signature:
 ```scala
 trait Make[F[_], A] {
   def make: Either[Conflicts, F[A]]
 }
 ```
 
-Then we can define an instances of this tc for user-defined types.
+Where:
+- `F[_]` is an initialization effect
+- `A` a target type
+
+Working with it isn't different from how we usually work with typeclasses.
+
+Instance definition examples:
 ```scala
-import make._
+// define instance
+case class Foo(a: Int)
+object Foo {
+  // just a pure instance
+  implicit val make: Make[IO, Foo] = Make.pure(Foo(42))
+  // or construct it in F[_]
+  implicit val make: Make[IO, Foo] = Make.eff(IO(Foo(42)))
+}
+
+case class Bar(foo: Foo)
+object Bar {
+  // define instance that is is build from dependency
+  implicit def make(implicit dep: Make[IO, Foo]): Make[IO, Bar] =
+    dep.map(foo => Bar(foo))
+}
+
+case class Baz(foo: Foo, bar: Bar)
+object Baz {
+  // use tuple for several depencies
+  implicit def make(implicit dep: Make[IO, (Foo, Bar)]): Make[IO, Baz] =
+    dep.mapN((foo, bar) => Baz(foo, bar))
+} 
+
+// or use @autoMake annotation to generate the code above
+@autoMake
+class AutoBaz(foo: Foo, bar: Bar)
+```
+
+Then summon instances that you need and use:
+```scala
+// single Foo
+val fooMake: Make[IO, Foo] = Make.of[IO, Foo]
+// several instances
+val several: Make[IO, (Baz, AutoBaz)] = Make.of[IO, (Baz, AutoBaz)]
+
+// use 
 import make.syntax._
-import cats.effect._
-import cats.effect.implicits._
 
-case class Foo(v: Int, s: String)
-object Foo {
-  // just a const instance
-  implicit val make: Make[IO, Foo] = Make.pure(Foo(42, "foo"))
-}
-
-// summon it and use somewhere else:
-val fooMake: Make[IO, Foo] = Make.of[IO, Foo]
-val f = for {
-  foo <- IO.fromEither(fooMake.make)
-  _ <-  // use foo
-} yield ()
+val fooIO: IO[Foo] = IO.fromEither(fooMake.make)
 ```
 
-Let's make the example above a more interesting and do a real injection:
+### Debug
+
+In case if instance can't be infered scalac it isn't clear what is wrong.
+To get a detailed information in which type deson't have `Make` instance use `debugOf`:
 ```scala
-case class Foo(v: Int, s: String)
-object Foo {
-  // ask `Int` and `String` as a paramters and construct `Foo`
-  implicit def make(implicit deps: Make[IO, (Int, String)]): Make[IO, Foo] =
-    deps.mapN(Foo)
-}
-// now to summon it it's required to define `Make` for `Int` and `String`:
-implicit val intMake: Make[IO, Int] = Make.pure(42)
-implicit val strMake: Make[IO, String] = Make.pure("foo")
+val bazMake = Make.of[IO, Baz]
+// [error] FromReadme.scala:39:26: could not find implicit value for parameter m: make.Make[cats.effect.IO,example.FromReadme.Baz]
+//    could not find implicit value for parameter m: make.Make[cats.effect.IO,example.FromReadme.Baz]
+// [error]     val bazMake = Make.of[IO, Baz]
+// [error]                          ^
 
-val fooMake: Make[IO, Foo] = Make.of[IO, Foo]
-val f = for {
-  foo <- IO.fromEither(fooMake.make)
-  _ <-  // use foo
-} yield ()
+
+// detailed error with debug
+import make.enableDebug._
+val bazMake = Make.debugOf[IO, Baz]
+// [error] FromReadme.scala:40:31: Make for example.FromReadme.Baz not found
+// [error]         Make instance for example.FromReadme.Baz:
+// [error]                 Failed at example.FromReadme.Baz.make becase of:
+// [error]                 Make instance for (example.FromReadme.Foo, example.FromReadme.Bar):
+// [error]                         Failed at make.MakeTupleInstances.tuple2 becase of:
+// [error]                         Make instance for example.FromReadme.Foo:
+// [error]                                 Make instance for example.FromReadme.Foo not found
+// [error]     val bazMake = Make.debugOf[IO, Baz]
+// [error]                               ^
 ```
+
+### Subtypes
+
+`A` type in `Make[F, A]` is invariant.
+So, to use interfaces in other instances you need to provide `ContraMake` instances:
+```scala
+trait Foo
+
+@autoMake
+class FooImpl(smt: Smth) extends Foo
+
+implicit val fooFromFooImpl = ContraMake.widen[FooImpl, Foo]
+```
+
+### Conflicts
+
+Despite of the fact that compiler checks that instance can be infered there are still a small chance to define an incorrect one.
+Thats why `Make.make` returns `Either[Conflicts, F[A]]` instead of `F[A]`.
+
+Example:
+```
+case class Foo(i: Int)
+object Foo {
+  implicit val make: Make[IO, Foo] = Make.pure(1).map(i => Foo(i))
+}
+
+@autoMake
+case class Bar(i: Int)
+
+implicit val intInstance: Make[IO, Int] = Make.pure(42)
+
+// Ok
+val v1: Either[Conflicts, IO[A]] = Make.of[IO, Bar].make
+
+// Fail
+val v2: Either[Conflicts, IO[A]] = Make.of[IO, (Bar, Foo)].make
+// In this case `v` will be:
+//   Left(make.Conflicts: Conflicts: Int defined at SourcePos(example.FromReadme.intInstance,45,54),SourcePos(example.FromReadme.Foo.make,39,58))
+// because `Foo.make` introduces an additional `Int` into resolution graph
+```
+
+
+### Choose the F[_]
+
+It's up to you what `F[_]` to use. The only requirement on it is to have `cats.Monad` instance.
+For example, `Resourse[F, ?]` should cover all needs.

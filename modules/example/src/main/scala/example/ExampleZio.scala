@@ -46,8 +46,7 @@ object ExampleZio extends App {
     val value = Make.debugOf[RManaged[Any, ?], End]
 
     for {
-      graph <- ZIO.fromEither(value.toGraph).orDie
-      zmanaged = graph.initEff
+      zmanaged <- ZIO.fromEither(value.make).orDie
       _ <- zmanaged.orDie.use(r => putStrLn(r.toString))
     } yield ExitCode.success
   }

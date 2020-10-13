@@ -67,7 +67,7 @@ lazy val rootProject = project.in(file("."))
     name := "make-root",
     skip in publish := true
   )
-  .aggregate(core)
+  .aggregate(make)
 
 def is213(v: String): Boolean = {
   CrossVersion.partialVersion(v) match {

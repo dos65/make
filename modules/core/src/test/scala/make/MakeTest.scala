@@ -8,17 +8,15 @@ import make.syntax._
 
 class MakeTest extends FunSuite {
 
-  import ioEff._
-
   test("basic") {
     val a = Make.pure[IO, Int](1)
-    assertEquals(a.tag.sourcePos, SourcePos("make.MakeTest.a", 14, 31))
+    assertEquals(a.tag.sourcePos, SourcePos("make.MakeTest.a", 12, 31))
   }
 
   test("map") {
     val a = Make.pure(42)
     val b = a.map(_.toString)
-    assertEquals(b.tag.sourcePos, SourcePos("make.MakeTest.b", 20, 18))
+    assertEquals(b.tag.sourcePos, SourcePos("make.MakeTest.b", 19, 18))
   }
 
   test("conflict") {

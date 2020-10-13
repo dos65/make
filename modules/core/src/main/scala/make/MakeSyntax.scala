@@ -22,4 +22,7 @@ final class MakeBasicSyntax[F[_], A](private val m: Make[F, A]) extends AnyVal {
 
   def toGraph(implicit F: Monad[F]): Either[Conflicts, Graph[F, A]] =
     Graph.fromMake(m)
+
+  def make(implicit F: Monad[F]): Either[Conflicts, F[A]] =
+    toGraph.map(_.initEff) 
 }

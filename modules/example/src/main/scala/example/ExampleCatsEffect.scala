@@ -36,10 +36,6 @@ object ExampleCatsEffect extends IOApp {
   @autoMake
   class End(yo: Yohoho, yo2: Yohoho2)
 
-  // TODO doesn't work with not used F[_]
-  // @autoMake
-  // class End[F[_]](yo: Yohoho, yo2: Yohoho2)
-
   override def run(args: List[String]): IO[ExitCode] = {
     implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
 
@@ -49,8 +45,7 @@ object ExampleCatsEffect extends IOApp {
     val make = Make.debugOf[Resource[IO, ?], End]
 
     for {
-      graph <- IO.fromEither(make.toGraph)
-      resource = graph.initEff
+      resource <- IO.fromEither(make.make)
       _ <- resource.use(end => IO(println(end)))
     } yield ExitCode.Success
   }
