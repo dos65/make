@@ -18,7 +18,7 @@ import make.syntax._
 
 ### Defining instances
 
-Speaking roughly, `Make` might be treaten as a typecless with the following signature:
+Speaking roughly, `Make` might be treated as a typeclass with the following signature:
 ```scala
 trait Make[F[_], A] {
   def make: Either[Conflicts, F[A]]
@@ -76,8 +76,8 @@ val fooIO: IO[Foo] = IO.fromEither(fooMake.make)
 
 ### Debug
 
-In case if instance can't be infered scalac it isn't clear what is wrong.
-To get a detailed information in which type deson't have `Make` instance use `debugOf`:
+In case if instance can't be infered it isn't clear what went wrong.
+To get a detailed information `debugOf`:
 ```scala
 val bazMake = Make.of[IO, Baz]
 // [error] FromReadme.scala:39:26: could not find implicit value for parameter m: make.Make[cats.effect.IO,example.FromReadme.Baz]
@@ -103,7 +103,7 @@ val bazMake = Make.debugOf[IO, Baz]
 ### Subtypes
 
 `A` type in `Make[F, A]` is invariant.
-So, to use interfaces in other instances you need to provide `ContraMake` instances:
+So, to use interfaces in other instances you need to provide `ContraMake`:
 ```scala
 trait Foo
 
