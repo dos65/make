@@ -119,7 +119,7 @@ Despite of the fact that compiler checks that instance can be infered there are 
 Thats why `Make.make` returns `Either[Conflicts, F[A]]` instead of `F[A]`.
 
 Example:
-```
+```scala
 case class Foo(i: Int)
 object Foo {
   implicit val make: Make[IO, Foo] = Make.pure(1).map(i => Foo(i))
@@ -144,4 +144,4 @@ val v2: Either[Conflicts, IO[A]] = Make.of[IO, (Bar, Foo)].make
 ### Choose the F[_]
 
 It's up to you what `F[_]` to use. The only requirement on it is to have `cats.Monad` instance.
-For example, `Resourse[F, ?]` should cover all needs.
+`Resourse[F, ?]` should cover all needs.
