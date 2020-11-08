@@ -69,7 +69,7 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
     q"""
         implicit def make[$effTpe[_], ..$typeParams](
             implicit ..${implicits}
-        ): Make[$effTpe, $targetTpe] =
+        ): _root_.make.Make[$effTpe, $targetTpe] =
           _root_.make.internal.MakeOps.map(deps)($mapF)
       """
   }
