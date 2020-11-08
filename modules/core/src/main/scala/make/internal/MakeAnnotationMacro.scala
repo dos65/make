@@ -46,6 +46,15 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
   private def instanceTree(clz: Clz): Tree = {
     import clz._
 
+    // println(s"clz: ${clz.name} , $params")
+    // println(params.map(p => 
+    //   p.mods.annotations.head
+    //     .asInstanceOf[Apply].fun
+    //     .asInstanceOf[Select].qualifier
+    //     .asInstanceOf[New].tpt
+    //     .asInstanceOf[Select]
+    // ))
+
     val paramsTpe = params.map(_.tpt)
     val tpe = tq"(..${params.map(_.tpt)})"
     val typeArgs = typeParams.map(_.name)
