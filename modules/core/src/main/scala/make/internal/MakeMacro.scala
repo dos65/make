@@ -58,12 +58,15 @@ class MakeMacro(val c: whitebox.Context) {
     if (isSelfLoop) {
       c.abort(c.enclosingPosition, "skip")
     } else {
-      val trace = resolutionTrace(open, makeTc)
-
       val makeTpe = appliedType(makeTc, ftpe.tpe, atpe.tpe)
-      val defaultInstance = c.inferImplicitValue(makeTpe)
-      defaultInstance match {
+
+      val instance = 
+        if (state.failedTpe.contains(makeTpe)) EmptyTree else c.inferImplicitValue(makeTpe)
+
+      instance match {
         case EmptyTree =>
+          state.failedTpe.add(makeTpe)
+          val trace = resolutionTrace(open, makeTc)
           trace.path.headOption.foreach { v =>
             val symSt = state.reverseTraces.getOrElse(v.tpe, mutable.HashMap.empty)
             symSt.update(v.sym, atpe.tpe)
@@ -119,15 +122,15 @@ class MakeMacro(val c: whitebox.Context) {
   private def renderInstanceSt(st: InstanceSt): String = {
 
     def render(sb: StringBuilder, level: Int, st: InstanceSt): StringBuilder = {
-      val tabs = "\t" * level
-      val appendTabs = tabs + "\t"
-      sb.append(s"\n${tabs}Make instance for ${st.tpe}:")
+      val ident = "  " * level
+      val appendIdent = ident + " "
+      sb.append(s"\n${ident}${st.tpe}:")
       st match {
         case InstanceSt.NoInstances(_) =>
-          sb.append(s"\n${appendTabs}Make instance for ${st.tpe} not found")
+          sb.append(s"\n${appendIdent}${st.tpe} not found")
         case InstanceSt.FailedTraces(_, traces) =>
           traces.foldLeft(sb) { case (sb, trace) =>
-            val next = sb.append(s"\n${appendTabs}Failed at ${trace.sym.fullName} becase of:")
+            val next = sb.append(s"\n${appendIdent}Failed at ${trace.sym.fullName} becase of:")
             render(next, level + 1, trace.dependencySt)
           }
       }
@@ -156,6 +159,7 @@ class MakeMacro(val c: whitebox.Context) {
 
   class DebugSt(
     var debug: Boolean = false,
+    val failedTpe: mutable.HashSet[Type] = mutable.HashSet.empty,
     val reverseTraces: mutable.HashMap[Type, mutable.HashMap[c.Symbol, c.Type]] =
       mutable.HashMap.empty
   )
