@@ -23,7 +23,8 @@ class MakeTest extends FunSuite {
   case class Anno(@anno.Sample a: Int) 
 
   test("anno") {
-    implicit val a = Make.pure[IO, Int](42)
+    import make.tagged._
+    implicit val a = Make.pure[IO, Int :@: anno.Sample](42.tagged[anno.Sample])
     import enableDebug._
     Make.debugOf[IO, Anno]
   }

@@ -46,15 +46,6 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
   private def instanceTree(clz: Clz): Tree = {
     import clz._
 
-    // println(s"clz: ${clz.name} , $params")
-    // println(params.map(p => 
-    //   p.mods.annotations.head
-    //     .asInstanceOf[Apply].fun
-    //     .asInstanceOf[Select].qualifier
-    //     .asInstanceOf[New].tpt
-    //     .asInstanceOf[Select]
-    // ))
-
     val paramsTpe = params.map(_.tpt)
     val tpe = tq"(..${params.map(_.tpt)})"
     val typeArgs = typeParams.map(_.name)
@@ -83,10 +74,35 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
       """
   }
 
+  case class DepParam(valDef: ValDef, tree: Tree, tpt: Tree)
+  object DepParam {
+
+    def create(v: ValDef, i: Int): DepParam = {
+      val name = TermName(s"x$i")
+      val (tree, tpt) =
+        v.mods.annotations match {
+          case anno :: _ =>
+            val annotationSelect = 
+              anno
+                .asInstanceOf[Apply].fun
+                .asInstanceOf[Select].qualifier
+                .asInstanceOf[New].tpt
+                .asInstanceOf[Select]
+            val tpt = tq"_root_.make.tagged.:@:[${v.tpt}, $annotationSelect]"
+            val tree = Select(Ident(name), TermName("value"))
+            (tree, tpt)
+          case Nil => 
+            (Ident(name), v.tpt)
+        }
+       val valDef = ValDef(Modifiers(Flag.PARAM), TermName(s"x$i"), tpt, EmptyTree)
+       DepParam(valDef, tree, tpt)
+    }
+  }
+
   case class Clz(
     name: TypeName,
     typeParams: List[TypeDef],
-    params: List[ValDef],
+    params: List[DepParam],
     implicitParams: List[ValDef],
     create: Tree
   )
@@ -106,22 +122,24 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
                 (pAcc :+ vdef, ipAcc)
           }
 
-        val create = {
-          val funValDefs = params.zipWithIndex
+        val depParams =   
+          params.zipWithIndex
             .map({ case (d, i) =>
-              ValDef(Modifiers(Flag.PARAM), TermName(s"x$i"), d.tpt, EmptyTree)
+              DepParam.create(d, i)
             })
             .toList
+
+        val create = {
           Function(
-            funValDefs,
+            depParams.map(_.valDef),
             Apply(
               Select(New(Ident(clsDef.name.decodedName)), init.name),
-              funValDefs.map(d => Ident(d.name))
+              depParams.map(d => d.tree)
             )
           )
         }
 
-        Clz(clsDef.name, tparams, params.toList, implicitParams.toList, create)
+        Clz(clsDef.name, tparams, depParams, implicitParams.toList, create)
       }
     }
 
