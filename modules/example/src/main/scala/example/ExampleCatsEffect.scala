@@ -45,8 +45,7 @@ object ExampleCatsEffect extends IOApp {
     val make = Make.debugOf[Resource[IO, ?], End]
 
     for {
-      resource <- IO.fromEither(make.make)
-      _ <- resource.use(end => IO(println(end)))
+      _ <- make.make.use(end => IO(println(end)))
     } yield ExitCode.Success
   }
 

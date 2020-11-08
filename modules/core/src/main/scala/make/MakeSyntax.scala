@@ -20,9 +20,9 @@ final class MakeBasicSyntax[F[_], A](private val m: Make[F, A]) extends AnyVal {
   def ap[B: Tag](mf: Make[F, A => B]): Make[F, B] =
     MakeOps.ap(m)(mf)
 
-  def toGraph(implicit F: Monad[F]): Either[Conflicts, Graph[F, A]] =
+  def toGraph(implicit F: Monad[F]): Graph[F, A] =
     Graph.fromMake(m)
 
-  def make(implicit F: Monad[F]): Either[Conflicts, F[A]] =
-    toGraph.map(_.initEff) 
+  def make(implicit F: Monad[F]): F[A] =
+    toGraph.initEff
 }

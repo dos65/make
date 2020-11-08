@@ -46,8 +46,7 @@ object ExampleZio extends App {
     val value = Make.debugOf[RManaged[Any, ?], End]
 
     for {
-      zmanaged <- ZIO.fromEither(value.make).orDie
-      _ <- zmanaged.orDie.use(r => putStrLn(r.toString))
+      _ <- value.make.orDie.use(r => putStrLn(r.toString))
     } yield ExitCode.success
   }
 }

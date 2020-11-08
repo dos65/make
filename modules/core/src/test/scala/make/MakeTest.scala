@@ -16,14 +16,7 @@ class MakeTest extends FunSuite {
   test("map") {
     val a = Make.pure(42)
     val b = a.map(_.toString)
-    assertEquals(b.tag.sourcePos, SourcePos("make.MakeTest.b", 19, 18))
-  }
-
-  test("conflict") {
-    val a = Make.pure[IO, Int](42)
-    val b = a.map(identity)
-    assert(a.toGraph.isRight)
-    assert(b.toGraph.isLeft)
+    assertEquals(b.tag.sourcePos, SourcePos("make.MakeTest.b", 18, 18))
   }
 
 }

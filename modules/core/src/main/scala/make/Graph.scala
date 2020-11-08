@@ -11,28 +11,28 @@ import cats.Monad
 import cats.Applicative
 
 final class Graph[F[_], A](
-  entries: Map[Type, Graph.RawEntry[F]],
-  targetTpe: Type
+  entries: Map[Graph.Id, Graph.RawEntry[F]],
+  targetId: Graph.Id
 )(implicit F: Monad[F]) {
 
   def initEff: F[A] = {
     val order = initOrder
-    val init = F.pure(Map.empty[Type, Any])
+    val init = F.pure(Map.empty[Graph.Id, Any])
 
-    val rs = order.foldLeft(init) { case (rs, tpe) =>
+    val rs = order.foldLeft(init) { case (rs, id) =>
       F.flatMap(rs)(depsMap => {
 
-        val entry = entries(tpe)
+        val entry = entries(id)
         val input = entry.dependsOn.map(depsMap(_))
         val rsc = entry.f(input.toList)
-        F.map(rsc)(v => depsMap.updated(tpe, v))
+        F.map(rsc)(v => depsMap.updated(id, v))
       })
     }
 
-    F.map(rs)(values => values(targetTpe).asInstanceOf[A])
+    F.map(rs)(values => values(targetId).asInstanceOf[A])
   }
 
-  private def initOrder: List[Type] = {
+  private def initOrder: List[Graph.Id] = {
     val indexedKeys = entries.keys.zipWithIndex.toMap
     val indexedMap = indexedKeys.map { case (tpe, _) =>
       val entry = entries(tpe)
@@ -52,53 +52,40 @@ final class Graph[F[_], A](
 
 object Graph {
 
+  case class Id(tpe: Type, pos: Tag.SourcePos)
+  object Id {
+    def fromTag[A](tag: Tag[A]): Id = 
+      Id(tag.typeTag.tpe, tag.sourcePos)
+  }
+
   case class RawEntry[F[_]](
-    tpe: Type,
-    pos: Tag.SourcePos,
-    dependsOn: List[Type],
+    id: Id,
+    dependsOn: List[Id],
     f: List[Any] => F[Any]
   )
 
-  def fromMake[F[_]: Monad, A](v: Make[F, A]): Either[Conflicts, Graph[F, A]] = {
+  def fromMake[F[_]: Monad, A](v: Make[F, A]): Graph[F, A] = {
     val allEntriesMap = makeToAllEntriesMap(
       Map.empty,
       List(v.asInstanceOf[Make[F, Any]])
     )
-
-    val init = (Map.empty[Type, RawEntry[F]], List.empty[Conflicts.TpeConflict])
-    val (okMap, errors) =
-      allEntriesMap.foldLeft(init) { case ((okAcc, errAcc), (tpe, entries)) =>
-        val refs = entries.foldLeft(Set.empty[SourcePos]) { case (acc, e) => acc + e.pos }
-        if (refs.size > 1) {
-          val error = Conflicts.TpeConflict(tpe, refs.toList)
-          (okAcc, error :: errAcc)
-        } else {
-          val nextOk = okAcc.updated(tpe, entries.head)
-          (nextOk, errAcc)
-        }
-      }
-
-    if (errors.size > 0) {
-      Left(Conflicts(errors))
-    } else {
-      Right(new Graph(okMap, v.tag.typeTag.tpe))
-    }
+    new Graph(allEntriesMap, Id.fromTag(v.tag))
   }
 
   @tailrec
   private def makeToAllEntriesMap[F[_]: Applicative](
-    acc: Map[Type, List[RawEntry[F]]],
+    acc: Map[Id, RawEntry[F]],
     stack: List[Make[F, Any]]
-  ): Map[Type, List[RawEntry[F]]] = {
+  ): Map[Id, RawEntry[F]] = {
 
-    type HandleOut = (List[Any] => F[Any], List[Type], List[Make[F, Any]])
+    type HandleOut = (List[Any] => F[Any], List[Id], List[Make[F, Any]])
 
     def handleNode(v: Make[F, Any]): HandleOut = v match {
       case Make.Value(v, tag) =>
         ((_: List[Any]) => v, List.empty, List.empty)
       case Make.Bind(prev, f, tag) =>
         val func = (in: List[Any]) => f(in(0))
-        val deps = List(prev.tag.typeTag.tpe)
+        val deps = List(Id.fromTag(prev.tag))
         val other = List(prev)
         (func, deps, other)
       case Make.Ap(prev, op, tag) =>
@@ -109,8 +96,8 @@ object Graph {
             Applicative[F].pure[Any](aToB(a))
           }
         val deps = List(
-          prev.tag.typeTag.tpe,
-          op.tag.typeTag.tpe
+          Id.fromTag(prev.tag),
+          Id.fromTag(op.tag)
         )
         val other = List(
           prev,
@@ -121,10 +108,10 @@ object Graph {
 
     def handleMake(make: Make[F, Any]): (RawEntry[F], List[Make[F, Any]]) = {
       val tpe = make.tag.typeTag.tpe
+      val id = Id(tpe, make.tag.sourcePos)
       val (f, deps, toStack) = handleNode(make)
       val entry = RawEntry[F](
-        tpe,
-        make.tag.sourcePos,
+        id,
         deps,
         f
       )
@@ -137,9 +124,8 @@ object Graph {
         val tpe = mk.tag.typeTag.tpe
         val (entry, toStack) = handleMake(mk)
 
-        val lst = acc.getOrElse(tpe, List.empty)
-        val updLst = entry :: lst
-        val nextAcc = acc.updated(tpe, updLst)
+        val key = Id.fromTag(mk.tag)
+        val nextAcc = acc.updated(key, entry)
         val nextStack = toStack ++ stack.tail
         makeToAllEntriesMap(nextAcc, nextStack)
     }
