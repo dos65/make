@@ -82,13 +82,9 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
       val (tree, tpt) =
         v.mods.annotations match {
           case anno :: _ =>
-            val annotationSelect = 
-              anno
-                .asInstanceOf[Apply].fun
-                .asInstanceOf[Select].qualifier
-                .asInstanceOf[New].tpt
-                .asInstanceOf[Select]
-            val tpt = tq"_root_.make.tagged.:@:[${v.tpt}, $annotationSelect]"
+            // TODO doesn't work for 2.13
+            val annoTpe = c.typecheck(anno).tpe
+            val tpt = tq"_root_.make.tagged.:@:[${v.tpt}, $annoTpe]"
             val tree = Select(Ident(name), TermName("value"))
             (tree, tpt)
           case Nil => 

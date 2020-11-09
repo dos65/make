@@ -20,7 +20,7 @@ class MakeTest extends FunSuite {
   }
 
   @autoMake
-  case class Anno(@anno.Sample a: Int) 
+  class Anno(@anno.Sample a: Int) 
 
   test("anno") {
     import make.tagged._
