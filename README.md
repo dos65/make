@@ -21,7 +21,7 @@ import make.syntax._
 Speaking roughly, `Make` might be treated as a typeclass with the following signature:
 ```scala
 trait Make[F[_], A] {
-  def make: Either[Conflicts, F[A]]
+  def make: F[A]
 }
 ```
 
@@ -71,7 +71,7 @@ val several: Make[IO, (Baz, AutoBaz)] = Make.of[IO, (Baz, AutoBaz)]
 // use 
 import make.syntax._
 
-val fooIO: IO[Foo] = IO.fromEither(fooMake.make)
+val fooIO: IO[Foo] = fooMake.make
 ```
 
 ### Debug
@@ -112,34 +112,6 @@ class FooImpl(smt: Smth) extends Foo
 
 implicit val fooFromFooImpl = ContraMake.widen[FooImpl, Foo]
 ```
-
-### Conflicts
-
-Despite of the fact that compiler checks that instance can be infered there are still a small chance to define an incorrect one.
-Thats why `Make.make` returns `Either[Conflicts, F[A]]` instead of `F[A]`.
-
-Example:
-```scala
-case class Foo(i: Int)
-object Foo {
-  implicit val make: Make[IO, Foo] = Make.pure(1).map(i => Foo(i))
-}
-
-@autoMake
-case class Bar(i: Int)
-
-implicit val intInstance: Make[IO, Int] = Make.pure(42)
-
-// Ok
-val v1: Either[Conflicts, IO[A]] = Make.of[IO, Bar].make
-
-// Fail
-val v2: Either[Conflicts, IO[A]] = Make.of[IO, (Bar, Foo)].make
-// In this case `v` will be:
-//   Left(make.Conflicts: Conflicts: Int defined at SourcePos(example.FromReadme.intInstance,45,54),SourcePos(example.FromReadme.Foo.make,39,58))
-// because `Foo.make` introduces an additional `Int` into resolution graph
-```
-
 
 ### Choose the F[_]
 
