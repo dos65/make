@@ -3,7 +3,7 @@ package make.internal
 import scala.reflect.macros.blackbox
 import scala.reflect.internal.Flags
 
-class MakeAnnotationMacro(val c: blackbox.Context) extends AnnotationsCompat {
+class MakeAnnotationMacro(val c: blackbox.Context) {
 
   import c.universe._
 
@@ -91,6 +91,16 @@ class MakeAnnotationMacro(val c: blackbox.Context) extends AnnotationsCompat {
         }
        val valDef = ValDef(Modifiers(Flag.PARAM), TermName(s"x$i"), tpt, EmptyTree)
        DepParam(valDef, tree, tpt)
+    }
+
+
+    private def annotationTpe(tree: c.Tree): c.Tree = {
+      tree match {
+        case Apply(Select(New(annoSelect), _), _) =>
+          annoSelect
+        case _ =>
+          c.abort(c.enclosingPosition, "Annotation descontruction failed")
+      }
     }
   }
 
