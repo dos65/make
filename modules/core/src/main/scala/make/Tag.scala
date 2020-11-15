@@ -1,6 +1,7 @@
 package make
 
 import scala.reflect.runtime.universe.WeakTypeTag
+import scala.reflect.runtime.universe.TypeTag
 import make.internal.SourcePosMacro
 
 final case class Tag[A](

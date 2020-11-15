@@ -10,7 +10,7 @@ import make.internal.Tarjans
 import cats.Monad
 import cats.Applicative
 
-final class Graph[+F[_], A](
+final class Graph[F[_], A](
   entries: Map[Graph.Id, Graph.RawEntry[F]],
   targetId: Graph.Id
 )(implicit F: Monad[F]) {
@@ -52,10 +52,11 @@ final class Graph[+F[_], A](
 
 object Graph {
 
-  case class Id(tpe: Type, pos: Tag.SourcePos)
+  // TODO is .toString on WeakTypeTag is enough?
+  case class Id(tpe: String, pos: Tag.SourcePos)
   object Id {
     def fromTag[A](tag: Tag[A]): Id = 
-      Id(tag.typeTag.tpe, tag.sourcePos)
+      Id(tag.typeTag.tpe.toString, tag.sourcePos)
   }
 
   case class RawEntry[F[_]](
@@ -108,7 +109,7 @@ object Graph {
 
     def handleMake(make: Make[F, Any]): (RawEntry[F], List[Make[F, Any]]) = {
       val tpe = make.tag.typeTag.tpe
-      val id = Id(tpe, make.tag.sourcePos)
+      val id = Id.fromTag(make.tag)
       val (f, deps, toStack) = handleNode(make)
       val entry = RawEntry[F](
         id,
