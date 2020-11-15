@@ -8,7 +8,7 @@ sealed abstract class Make[F[_], A] { self =>
   def tag: Tag[A]
 }
 
-object Make extends MakeTupleInstances with LowPrioMake {
+object Make extends MakeTupleInstances with ContraMakeInstances with LowPrioMake {
 
   def of[F[_], A](implicit m: Make[F, A]): Make[F, A] = m
 
@@ -35,17 +35,21 @@ object Make extends MakeTupleInstances with LowPrioMake {
   def eff[F[_], A: Tag](v: F[A]): Make[F, A] =
     Value(v, Tag.of[A])
 
-  implicit def contraMakeInstance[F[_]: Applicative, B, A](implicit
-    contra: ContraMake[B, A],
+
+  def widen[A, B <: A]: Contra[A, B] = new Contra(identity)
+  def contramap[A, B](f: B => A): Contra[A, B] = new Contra(f)
+
+}
+
+final class Contra[A, B](private[make] val f: B => A)
+
+trait ContraMakeInstances {
+
+  implicit def contraMakeInstance[F[_]: Applicative, A, B](implicit
+    contra: Contra[A, B],
     m: Make[F, B],
     tag: Tag[A]
   ): Make[F, A] = MakeOps.map(m)(contra.f)
-}
-
-final class ContraMake[B, A](private[make] val f: B => A)
-object ContraMake {
-  def widen[B, A >: B]: ContraMake[B, A] = new ContraMake[B, A](identity)
-  def apply[B, A](f: B => A): ContraMake[B, A] = new ContraMake[B, A](f)
 }
 
 trait LowPrioMake {

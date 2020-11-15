@@ -10,7 +10,7 @@ import make.internal.Tarjans
 import cats.Monad
 import cats.Applicative
 
-final class Graph[F[_], A](
+final class Graph[+F[_], A](
   entries: Map[Graph.Id, Graph.RawEntry[F]],
   targetId: Graph.Id
 )(implicit F: Monad[F]) {
