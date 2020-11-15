@@ -39,10 +39,11 @@ object ExampleCatsEffect extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
     implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
 
+    type InitEff[A] = Resource[IO, A]
     implicit val initString = Make.eff(Resource.pure[IO, String]("asdasd"))
 
     import enableDebug._
-    val make = Make.debugOf[Resource[IO, ?], End]
+    val make = Make.debugOf[InitEff, End]
 
     for {
       _ <- make.make.use(end => IO(println(end)))

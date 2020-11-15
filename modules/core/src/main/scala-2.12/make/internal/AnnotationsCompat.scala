@@ -8,6 +8,6 @@ trait AnnotationsCompat {
 
   import c.universe._
 
-  def annotationTpe(tree: c.Tree): c.Tree =
+  def annotationTpe(tree: c.Tree): c.Type =
     c.typecheck(tree).tpe
 }
