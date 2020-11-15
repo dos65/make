@@ -3,7 +3,7 @@ package make.internal
 import scala.reflect.macros.blackbox
 import scala.reflect.internal.Flags
 
-class MakeAnnotationMacro(val c: blackbox.Context) {
+class MakeAnnotationMacro(val c: blackbox.Context) extends AnnotationsCompat {
 
   import c.universe._
 
@@ -82,9 +82,8 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
       val (tree, tpt) =
         v.mods.annotations match {
           case anno :: _ =>
-            // TODO doesn't work for 2.13
-            val annoTpe = c.typecheck(anno).tpe
-            val tpt = tq"_root_.make.tagged.:@:[${v.tpt}, $annoTpe]"
+            val annoTpe = annotationTpe(anno)
+            val tpt = tq"_root_.make.annotated.:@:[${v.tpt}, $annoTpe]"
             val tree = Select(Ident(name), TermName("value"))
             (tree, tpt)
           case Nil => 

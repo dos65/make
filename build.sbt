@@ -1,7 +1,7 @@
 import xerial.sbt.Sonatype._
 
 lazy val commonSettings = Seq(
-  scalaVersion := "2.12.12",
+  scalaVersion := "2.13.3",
   organization := "io.github.dos65",
   version := "0.0.3-SNAPSHOT",
   crossScalaVersions := Seq("2.12.12", "2.13.3"),
@@ -39,6 +39,10 @@ lazy val make = project.in(file("modules/core"))
       "-language:experimental.macros"
     ),
     sourceGenerators in Compile += (sourceManaged in Compile).map(dir => Boilerplate.gen(dir)).taskValue,
+    // unmanagedSourceDirectories in Compile += {
+    //   val additionalSrc = if (is213(version.value)) "scala_2.13" else "scala_2.12"
+    //   baseDirectory.value / "src" / "main" / additionalSrc
+    // },
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.typelevel" %% "cats-core" % "2.1.1",

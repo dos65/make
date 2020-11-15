@@ -1,10 +1,10 @@
 package make
 
-object tagged {
+object annotated {
 
   case class :@:[+A, B](value: A)
 
   implicit class Syntax[A](val a: A) extends AnyVal {
-    def tagged[B]: A :@: B = :@:(a)
+    def annotated[B]: A :@: B = :@:(a)
   }
 }
