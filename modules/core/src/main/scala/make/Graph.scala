@@ -15,6 +15,8 @@ final class Graph[F[_], A](
   targetId: Graph.Id
 )(implicit F: Monad[F]) {
 
+  def x = entries
+
   def initEff: F[A] = {
     val order = initOrder
     val init = F.pure(Map.empty[Graph.Id, Any])
@@ -107,8 +109,7 @@ object Graph {
     }
 
     def handleMake(make: Make[F, Any]): (RawEntry[F], List[Make[F, Any]]) = {
-      val tpe = make.tag.typeTag.tpe
-      val id = Id(tpe, make.tag.sourcePos)
+      val id = Id(make.tag.typeTag.tpe, make.tag.sourcePos)
       val (f, deps, toStack) = handleNode(make)
       val entry = RawEntry[F](
         id,

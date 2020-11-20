@@ -4,7 +4,7 @@ import make.internal.MakeMacro
 import make.internal.MakeOps
 import cats.Applicative
 
-sealed abstract class Make[F[_], A] { self =>
+sealed abstract class Make[F[_], A] {
   def tag: Tag[A]
 }
 
@@ -38,7 +38,8 @@ object Make extends MakeTupleInstances with LowPrioMake {
   implicit def contraMakeInstance[F[_]: Applicative, B, A](implicit
     contra: ContraMake[B, A],
     m: Make[F, B],
-    tag: Tag[A]
+    tagA: Tag[A],
+    tagB: Tag[B]
   ): Make[F, A] = MakeOps.map(m)(contra.f)
 }
 
