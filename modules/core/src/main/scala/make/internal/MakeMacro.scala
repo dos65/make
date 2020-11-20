@@ -67,7 +67,7 @@ class MakeMacro(val c: whitebox.Context) {
         case EmptyTree =>
           state.failedTpe.add(makeTpe)
           val trace = resolutionTrace(open, makeTc)
-          trace.path.headOption.foreach { v =>
+          trace.path.foreach { v =>
             val symSt = state.reverseTraces.getOrElse(v.tpe, mutable.HashMap.empty)
             symSt.update(v.sym, atpe.tpe)
             state.reverseTraces.update(v.tpe, symSt)
