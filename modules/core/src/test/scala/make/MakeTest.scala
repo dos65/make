@@ -22,7 +22,7 @@ class MakeTest extends FunSuite {
   //   Make.of[IO, Anno]
   // }
 
-  // test("asdsa") {
+  // test("asdsa".only) {
 
   //   case class A[F[_]](value: F[String])
   //   case class B[F[_]](a: A[F])
@@ -50,78 +50,80 @@ class MakeTest extends FunSuite {
   //   import enableDebug._
   //   val resolved = Make.debugOf[IO, D[Option, IO]]
 
+  //   println(RenderTree.fromMake(resolved).render(0))
+
   //   pprint.pprintln(resolved)
   //   //println(resolved)
   //   //resolved.toGraph.x
   // }
 
-  test("asdsa2") {
+  // test("asdsa2") {
 
-    case class A[F[_]](value: F[String])
-    case class B[F[_]](a: A[F])
-    case class C[F[_]](a: A[F])
-    case class D[F[_], G[_]](b: C[F], c: C[G])
+  //   case class A[F[_]](value: F[String])
+  //   case class B[F[_]](a: A[F])
+  //   case class C[F[_]](a: A[F])
+  //   case class D[F[_], G[_]](b: C[F], c: C[G])
 
-    implicit def aMakeOption[F[_]: Applicative]: Make[F, A[Option]] = Make.pure(A(Some("42")))
-    implicit def aMakeIO[F[_]: Applicative]: Make[F, A[IO]] = Make.pure(A(IO.pure("42")))
+  //   implicit def aMakeOption[F[_]: Applicative]: Make[F, A[Option]] = Make.pure(A(Some("42")))
+  //   implicit def aMakeIO[F[_]: Applicative]: Make[F, A[IO]] = Make.pure(A(IO.pure("42")))
 
-    implicit def bMake[F[_]: Applicative, G[_]](
-      implicit a: Make[F, A[G]]
-    ): Make[F, B[G]] = 
-      a.map(a => B(a))
+  //   implicit def bMake[F[_]: Applicative, G[_]](
+  //     implicit a: Make[F, A[G]]
+  //   ): Make[F, B[G]] = 
+  //     a.map(a => B(a))
 
-    implicit def cMake[F[_]: Applicative, G[_]](
-      implicit a: Make[F, A[G]]
-    ): Make[F, C[G]] = 
-      a.map(a => C(a))
+  //   implicit def cMake[F[_]: Applicative, G[_]](
+  //     implicit a: Make[F, A[G]]
+  //   ): Make[F, C[G]] = 
+  //     a.map(a => C(a))
 
-    implicit def dMake[F[_]: Applicative, G[_], H[_]](
-      implicit deps: Make[F, (C[G], C[H])]
-    ): Make[F, D[G, H]] =
-      deps.mapN(D(_, _))
+  //   implicit def dMake[F[_]: Applicative, G[_], H[_]](
+  //     implicit deps: Make[F, (C[G], C[H])]
+  //   ): Make[F, D[G, H]] =
+  //     deps.mapN(D(_, _))
 
-    import enableDebug._
+  //   import enableDebug._
 
-    val resolved = Make.debugOf[IO, D[Option, IO]]
+  //   val resolved = Make.debugOf[IO, D[Option, IO]]
 
-    println(RenderTree.fromMake(resolved).render(0))
-  }
+  //   println(RenderTree.fromMake(resolved).render(0))
+  // }
 
-  test("asdsa3".only) {
+  // test("asdsa3".only) {
 
-    case class A[F[_]](value: F[String])
-    case class C[F[_]](a: A[F])
-    case class D[F[_], G[_]](b: C[F], c: C[G])
 
-    implicit def aMake[F[_]: Applicative, Z[_]: Applicative]: Make[F, A[Z]] = Make.pure(A(Applicative[Z].pure("42")))
+  //   case class A[F[_]](value: F[String])
+  //   case class C[F[_]](a: A[F])
+  //   case class D[F[_], G[_]](b: C[F], c: C[G])
 
-    implicit def cMake[F[_]: Applicative, G[_]: Applicative](
-      implicit a: Make[F, A[G]]
-    ): Make[F, C[G]] = 
-      a.map(a => C(a))
+  //   implicit def aMake[F[_]: Applicative, Z[_]: Applicative]: Make[F, A[Z]] = Make.pure(A(Applicative[Z].pure("42")))
 
-    implicit def dMake[F[_]: Applicative, G[_]: Applicative, H[_]: Applicative](
-      implicit deps: Make[F, (C[G], C[H])]
-    ): Make[F, D[G, H]] =
-      deps.mapN(D(_, _))
+  //   implicit def cMake[F[_]: Applicative, G[_]: Applicative](
+  //     implicit a: Make[F, A[G]]
+  //   ): Make[F, C[G]] = 
+  //     a.map(a => C(a))
 
-    import enableDebug._
+  //   implicit def dMake[F[_]: Applicative, G[_]: Applicative, H[_]: Applicative](
+  //     implicit deps: Make[F, (C[G], C[H])]
+  //   ): Make[F, D[G, H]] =
+  //     deps.mapN(D(_, _))
 
-    val resolved = Make.debugOf[IO, D[Option, IO]]
+  //   // import enableDebug._
 
-    println(RenderTree.fromMake(resolved).render(0))
-  }
+  //   val resolved = Make.of[IO, D[Option, IO]]
+
+  //   println(RenderTree.fromMake(resolved).render(0))
+  // }
+
 
   sealed trait RenderTree { self =>
     def render(n: Int): String = {
       val tabs = " " * n
       self match {
         case RenderTree.Value(tag) => s"${tabs}value#$tag"
-        case RenderTree.Bind(prev, tag) => s"${tabs}bind#$tag(\n${prev.render(n+2)}\n$tabs)"
+        case RenderTree.Bind(prev, tag) => s"${tabs}apply#$tag(\n${prev.render(n+2)}\n$tabs)"
         case RenderTree.Ap(prev, f, tag) =>
-          val rendered = 
-          s"${tabs}bind#$tag(\n)"
-          s"${tabs}ap#$tag(\n${prev.render(n+2)},\n${f.render(n+2)}\n$tabs)"
+          s"${tabs}apply#$tag(\n${f.render(n+2)}(\n${prev.render(n+4)}\n)\n$tabs)"
       }
     }
   }

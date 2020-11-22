@@ -3,6 +3,7 @@ package make
 import make.internal.MakeMacro
 import make.internal.MakeOps
 import cats.Applicative
+import scala.reflect.runtime.universe.TypeTag
 
 sealed abstract class Make[F[_], A] {
   def tag: Tag[A]

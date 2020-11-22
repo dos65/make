@@ -7,13 +7,15 @@ import cats.effect.IO
 
 class TagTest extends FunSuite {
 
-  // test("sad".only) {
-  //   val x = implicitly[Tag.TpeTag[List[String]]]
-  //   println(x.tpe.isFullyResolved)
+  test("tags") {
+    assertEquals(Tag.TpeTag2[Int].tpe.render, "scala.Int")
+    assertEquals(Tag.TpeTag2[List[String]].tpe.render, "scala.collection.immutable.List[java.lang.String]")
+    assertEquals(func[IO].tpe.render, "make.TagTest.ABC[cats.effect.IO]")
+    assertEquals(func2[IO].tpe.render, "cats.effect.IO[scala.Int]")
+  }
 
-  //   println(func[IO].tpe.isFullyResolved)
-  // }
+  class ABC[F[_]]
+  def func[F[_]: Tag.TCTag]: Tag.TpeTag2[ABC[F]] = Tag.TpeTag2[ABC[F]]
 
-  // class ABC[F[_]]
-  // def func[F[_]]: Tag.TpeTag[ABC[F]] = Tag.TpeTag[ABC[F]]
+  def func2[G[_]: Tag.TCTag]: Tag.TpeTag2[G[Int]] = Tag.TpeTag2[G[Int]]
 }

@@ -45,4 +45,38 @@ object Tag {
     implicit def materialize[A]: TpeTag[A] =
       macro TpeTagMacro.materializeTpeTag[A]
   }
+
+  final case class TpeTag2[A](tpe: TpeTag2.Type)
+
+  
+  final case class TCTag[F[_]](symbol: String)
+  object TCTag {
+    implicit def materialize[F[_]]: TCTag[F] =
+      macro TpeTagMacro.materializeTCTag[F]
+  }
+
+  object TpeTag2 {
+
+    def apply[A](implicit tag: TpeTag2[A]): TpeTag2[A] = tag
+
+    final case class Type(
+      symbol: String,
+      arguments: List[Type] 
+    ) {
+
+      override def toString: String = render
+
+      def render: String = {
+        val argsStr = arguments match {
+          case Nil => ""
+          case lst => lst.mkString("[", ",", "]")
+        }
+        s"$symbol$argsStr"
+      }
+    }
+
+    implicit def materialize[A]: TpeTag2[A] =
+      macro TpeTagMacro.materializeTpeTag2[A]
+  }
+
 }
