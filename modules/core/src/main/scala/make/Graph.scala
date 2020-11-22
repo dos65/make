@@ -54,7 +54,7 @@ final class Graph[F[_], A](
 
 object Graph {
 
-  case class Id(tpe: Type, pos: Tag.SourcePos)
+  case class Id(tpe: Tag.TpeTag.Type, pos: Tag.SourcePos)
   object Id {
     def fromTag[A](tag: Tag[A]): Id = 
       Id(tag.typeTag.tpe, tag.sourcePos)

@@ -2,7 +2,6 @@ package make.internal
 
 import scala.reflect.macros.blackbox
 import make.Tag.TpeTag
-import make.Tag.TpeTag2
 import make.Tag
 
 class TpeTagMacro(val c:blackbox.Context) {
@@ -11,30 +10,11 @@ class TpeTagMacro(val c:blackbox.Context) {
 
   def materializeTpeTag[A : WeakTypeTag]: c.Expr[TpeTag[A]] = {
     val tpe = weakTypeOf[A]
-    val tree: c.Tree = q"_root_.make.Tag.TpeTag[${tpe}](${transformTpe(tpe)})"
-    println(tree)
+    val tree = q"_root_.make.Tag.TpeTag[${tpe}](${transformTpe(tpe)})"
     c.Expr[TpeTag[A]](tree)
   }
 
   private def transformTpe(t: c.Type): c.Tree = {
-    val symbol = t.dealias.typeSymbol
-    val name = symbol.fullName
-    val args = t.typeArgs.map(transformTpe)
-    val argsTree = q"List(..$args)"
-    if (t.typeSymbol.isParameter) {
-      q"_root_.make.Tag.TpeTag.Type.Parameter($name, $argsTree)"
-    } else {
-      q"_root_.make.Tag.TpeTag.Type.Stable($name, $argsTree)"
-    }
-  }
-
-  def materializeTpeTag2[A : WeakTypeTag]: c.Expr[TpeTag2[A]] = {
-    val tpe = weakTypeOf[A]
-    val tree = q"_root_.make.Tag.TpeTag2[${tpe}](${transformTpe2(tpe)})"
-    c.Expr[TpeTag2[A]](tree)
-  }
-
-  private def transformTpe2(t: c.Type): c.Tree = {
     val normalized = t.dealias.etaExpand
     val resolved = 
       if (normalized.typeSymbol.isParameter) {
@@ -48,7 +28,7 @@ class TpeTagMacro(val c:blackbox.Context) {
               case n => None
             }
           case x if x.typeSymbol.isParameter =>
-            val tagTpe = appliedType(weakTypeOf[Tag.TpeTag2[X] forSome {type X}].typeConstructor, t)
+            val tagTpe = appliedType(weakTypeOf[Tag.TpeTag[X] forSome {type X}].typeConstructor, t)
             optionFromImplicitTree(c.inferImplicitValue(tagTpe))
               .map{t => q"$t.render"}
           case x => None
@@ -59,8 +39,8 @@ class TpeTagMacro(val c:blackbox.Context) {
     resolved match {
       case None => c.abort(c.enclosingPosition, s"Not found Tag for $t")
       case Some(tree) =>
-        val arguments = t.typeArgs.map(transformTpe2)
-        q"_root_.make.Tag.TpeTag2.Type($tree, List(..$arguments))"
+        val arguments = t.typeArgs.map(transformTpe)
+        q"_root_.make.Tag.TpeTag.Type($tree, List(..$arguments))"
     }
   }
 
