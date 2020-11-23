@@ -25,7 +25,8 @@ class TpeTagMacro(val c:blackbox.Context) {
                 val tcTagTpe = appliedType(weakTypeOf[Tag.TCTag[X] forSome {type X[_]}].typeConstructor, t.typeConstructor)
                 optionFromImplicitTree(c.inferImplicitValue(tcTagTpe))
                   .map(t => q"$t.symbol")
-              case n => None
+              case n =>
+                None
             }
           case x if x.typeSymbol.isParameter =>
             val tagTpe = appliedType(weakTypeOf[Tag.TpeTag[X] forSome {type X}].typeConstructor, t)

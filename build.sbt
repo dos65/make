@@ -1,7 +1,7 @@
 import xerial.sbt.Sonatype._
 
 lazy val commonSettings = Seq(
-  scalaVersion := "2.13.3",
+  scalaVersion := "2.12.12",
   organization := "io.github.dos65",
   version := "0.0.3-SNAPSHOT",
   crossScalaVersions := Seq("2.12.12", "2.13.3"),
@@ -42,6 +42,7 @@ lazy val make = project.in(file("modules/core"))
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "org.typelevel" %% "cats-core" % "2.1.1",
+      "com.chuusai" %% "shapeless" % "2.3.3",
       "org.typelevel" %% "cats-effect" % "2.1.3" % "test",
       "com.lihaoyi" %% "pprint" % "0.5.6" % "test"
     ),

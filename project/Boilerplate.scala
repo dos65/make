@@ -110,11 +110,12 @@ object Boilerplate {
       val deps = (0 until arity).map(n => {
         val tpe = (n+'A').toChar
         val arg = (n+'a').toChar
-        s"$arg: Make[FF, $tpe]"
+        s"$arg: Lazy[Make[FF, $tpe]]"
       })
-      val args = synVals.mkString(",")
+      val args = synVals.map(s => s"$s.value").mkString(",")
 
-      val implicitValues = (deps ++ implictTags).mkString(",")
+      //val implicitValues = (deps ++ implictTags).mkString(",")
+      val implicitValues = (implictTags ++ deps).mkString(",")
 
 
       block"""
@@ -122,6 +123,7 @@ object Boilerplate {
            |
            |import make.internal.MakeOps
            |import cats.Applicative
+           |import shapeless._
            |
            |trait MakeTupleInstances {
            | 
