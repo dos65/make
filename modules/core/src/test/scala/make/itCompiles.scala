@@ -28,6 +28,15 @@ object itCompiles {
     }
 
     @autoMake
+    case class Smth3(a: Int, b: String, c: Double)
+    object Smth3Test {
+      implicit val intMake = Make.pure[IO, Int](42)
+      implicit val stringMake = Make.pure[IO, String]("42")
+      implicit val doubleMake = Make.pure[IO, Double](42)
+      Make.of[IO, Smth3]
+    }
+
+    @autoMake
     case class Smth2Implicit[F[_]](a: Int, b: String)(implicit val F: Sync[F])
     object Smth2ImplicitTest {
       implicit val intMake = Make.pure[IO, Int](42)

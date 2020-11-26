@@ -2,6 +2,7 @@ package make.internal
 
 import scala.reflect.macros.blackbox
 import scala.reflect.internal.Flags
+import scala.annotation.tailrec
 
 class MakeAnnotationMacro(val c: blackbox.Context) {
 
@@ -46,13 +47,21 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
   private def instanceTree(clz: Clz): Tree = {
     import clz._
 
-    val paramsTpe = params.map(_.tpt)
-    val tpe = tq"(..${params.map(_.tpt)})"
-    val typeArgs = typeParams.map(_.name)
-
-    val mapF = if (params.size > 1) q"($create).tupled" else create
-
     val effTpe = TermName(c.freshName("E")).toTypeName
+    val paramsTpe = params.map(_.tpt)
+
+    val dependencies: List[(TermName, c.Tree)] = params.zipWithIndex.map{case (dp, i) =>
+      val name = TermName(c.freshName(s"dep$i"))
+      val tree = q"$name: _root_.make.Make[$effTpe, ${dp.tpt}]"
+      (name, tree)
+    }
+    val implicitDependencies = dependencies.map(_._2)
+
+    
+    val impl = dependencies.reverse.map(_._1).foldLeft(EmptyTree){
+      case (EmptyTree, name) => q"_root_.make.internal.MakeOps.map($name)($create)" 
+      case (tree, name) =>  q"_root_.make.internal.MakeOps.ap($name)($tree)"
+    }
 
     val targetTpe =
       if (typeParams.isEmpty)
@@ -61,16 +70,22 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
         tq"${name.toTypeName}[..${typeParams.map(_.name)}]"
 
     val implicits =
-      q"deps: _root_.make.Make[$effTpe, $tpe]" ::
         q"${TermName(c.freshName())}: _root_.cats.Applicative[$effTpe]" ::
+        implicitDependencies ++
         implicitParams.toList ++
+        typeParams.zipWithIndex.flatMap{ case (t, i) =>
+          tagFor(t).map{tagTpe =>
+            val name = TermName(c.freshName(s"tpeTag$i"))
+            q"$name: $tagTpe"
+          }
+        } ++
         (if (paramsTpe.isEmpty) List.empty else List(q"tag: _root_.make.Tag[$targetTpe]"))
 
     q"""
         implicit def make[$effTpe[_], ..$typeParams](
             implicit ..${implicits}
         ): _root_.make.Make[$effTpe, $targetTpe] =
-          _root_.make.internal.MakeOps.map(deps)($mapF)
+          $impl
       """
   }
 
@@ -104,6 +119,15 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
     }
   }
 
+  // TODO
+  private def tagFor(typeDef: TypeDef): Option[Tree] = {
+    typeDef.tparams.size match {
+      case 0 => Some(tq"_root_.make.Tag.TpeTag[${typeDef.name}]")
+      case 1 => Some(tq"_root_.make.Tag.TCTag[${typeDef.name}]")
+      case _ => None
+    }
+  }
+
   case class Clz(
     name: TypeName,
     typeParams: List[TypeDef],
@@ -133,19 +157,36 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
               DepParam.create(d, i)
             })
             .toList
-
-        val create = {
-          Function(
-            depParams.map(_.valDef),
-            Apply(
-              Select(New(Ident(clsDef.name.decodedName)), init.name),
-              depParams.map(d => d.tree)
-            )
-          )
-        }
+        // TODO empty depdencies??
+        val create = createFunction(depParams, clsDef, init)
 
         Clz(clsDef.name, tparams, depParams, implicitParams.toList, create)
       }
+    }
+
+    def createFunction(
+      params: List[DepParam],
+      clsDef: ClassDef,
+      init: DefDef
+    ): Tree = {
+
+      @tailrec
+      def toLambda(in: List[DepParam], acc: Tree): Tree = {
+        in match {
+          case head :: tl => 
+            val nextAcc = Function(List(head.valDef), acc)
+            toLambda(tl, nextAcc)
+          case Nil => acc
+        }
+      }
+
+      val initAcc = 
+        Apply(
+          Select(New(Ident(clsDef.name.decodedName)), init.name),
+          params.map(d => d.tree)
+        )
+
+      toLambda(params, initAcc)
     }
 
     def findInit(body: List[Tree]): Option[DefDef] =

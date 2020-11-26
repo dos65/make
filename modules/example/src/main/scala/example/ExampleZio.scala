@@ -36,7 +36,7 @@ object ExampleZio extends App {
 
   override def run(args: List[String]): URIO[ZEnv, ExitCode] = {
 
-    implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
+    implicit val depImplAsDep = Make.widen[Dep, DepImpl]
 
     implicit val initString = Make.eff[RManaged[Any, ?], String](
       ZManaged.effect("asd")

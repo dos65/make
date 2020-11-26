@@ -37,7 +37,7 @@ object ExampleCatsEffect extends IOApp {
   class End(yo: Yohoho, yo2: Yohoho2)
 
   override def run(args: List[String]): IO[ExitCode] = {
-    implicit val depImplAsDep = ContraMake.widen[DepImpl, Dep]
+    implicit val depImplAsDep = Make.widen[Dep, DepImpl]
 
     type InitEff[A] = Resource[IO, A]
     implicit val initString = Make.eff(Resource.pure[IO, String]("asdasd"))

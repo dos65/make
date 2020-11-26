@@ -13,10 +13,9 @@ import make.syntax._
 
 class MakeTest extends FunSuite {
 
-  @autoMake
+ @autoMake
   class Anno(@anno.Sample a: Int) 
   test("annotated") {
-
     import make.annotated._
     implicit val a = Make.pure[IO, Int :@: anno.Sample](42.annotated[anno.Sample])
     Make.of[IO, Anno]
