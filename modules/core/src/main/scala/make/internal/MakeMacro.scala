@@ -27,6 +27,7 @@ class MakeMacro(val c: whitebox.Context) {
     state.debug = false
     out match {
       case EmptyTree =>
+        println(state.reverseTraces.mkString("\n\n"))
         val st = extractInstanceSt(atpe.tpe, state.reverseTraces)
         val message = renderInstanceSt(st)
         c.abort(c.enclosingPosition, s"Make for ${atpe.tpe} not found\n" + message)
@@ -67,10 +68,14 @@ class MakeMacro(val c: whitebox.Context) {
         case EmptyTree =>
           state.failedTpe.add(makeTpe)
           val trace = resolutionTrace(open, makeTc)
-          trace.path.foreach { v =>
-            val symSt = state.reverseTraces.getOrElse(v.tpe, mutable.HashMap.empty)
-            symSt.update(v.sym, atpe.tpe)
-            state.reverseTraces.update(v.tpe, symSt)
+
+          trace.path.sliding(2).foreach { v =>
+            val target = v(0)
+            val reason = v(1)
+            state.registerFailedReason(target.tpe, reason.sym, reason.tpe)
+          }
+          trace.path.headOption.foreach { v => 
+            state.registerFailedReason(atpe.tpe, v.sym, v.tpe)
           }
 
           c.abort(c.enclosingPosition, s"Instance resolution for ${atpe.tpe} failed")
@@ -162,5 +167,12 @@ class MakeMacro(val c: whitebox.Context) {
     val failedTpe: mutable.HashSet[Type] = mutable.HashSet.empty,
     val reverseTraces: mutable.HashMap[Type, mutable.HashMap[c.Symbol, c.Type]] =
       mutable.HashMap.empty
-  )
+  ) {
+
+    def registerFailedReason(tpe: Type, at: Symbol, reasonTpe: Type): Unit = {
+      val symSt = reverseTraces.getOrElse(reasonTpe, mutable.HashMap.empty)
+      symSt.update(at, tpe)
+      state.reverseTraces.update(reasonTpe, symSt)
+    }
+  }
 }
