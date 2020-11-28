@@ -74,6 +74,13 @@ object itCompiles {
       implicit val stringMake = Make.pure[IO, String]("42")
       Make.of[IO, NonCaseImplicit2[IO]]
     }
+
+    @autoMake
+    class HasTpeParam[X](a: X)
+    object HasTpeParam {
+      implicit val intMake = Make.pure[IO, Int](42)
+      Make.of[IO, HasTpeParam[Int]]
+    }
   }
 
 }

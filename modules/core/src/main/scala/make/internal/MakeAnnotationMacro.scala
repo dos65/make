@@ -122,7 +122,7 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
   // TODO
   private def tagFor(typeDef: TypeDef): Option[Tree] = {
     typeDef.tparams.size match {
-      case 0 => Some(tq"_root_.make.Tag.TpeTag[${typeDef.name}]")
+      case 0 => None
       case 1 => Some(tq"_root_.make.Tag.TCTag[${typeDef.name}]")
       case _ => None
     }

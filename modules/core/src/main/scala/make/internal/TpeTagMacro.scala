@@ -29,14 +29,15 @@ class TpeTagMacro(val c:blackbox.Context) {
                 None
             }
           case x if x.typeSymbol.isParameter =>
-            val tagTpe = appliedType(weakTypeOf[Tag.TpeTag[X] forSome {type X}].typeConstructor, t)
+            val tagTpe = appliedType(weakTypeOf[Tag.TPTag[X] forSome {type X}].typeConstructor, t)
             optionFromImplicitTree(c.inferImplicitValue(tagTpe))
-              .map{t => q"$t.render"}
+              .map{t => q"$t.symbol"}
           case x => None
         }
       } else {
          Some(q"${normalized.typeSymbol.fullName}")
       }
+    
     resolved match {
       case None => c.abort(c.enclosingPosition, s"Not found Tag for $t")
       case Some(tree) =>
@@ -61,6 +62,19 @@ class TpeTagMacro(val c:blackbox.Context) {
     } else {
       val tree = q"""_root_.make.Tag.TCTag[${weakTypeTag.tpe}](${symbol.fullName})"""
       c.Expr[Tag.TCTag[F]](tree)
+    }
+  }
+
+  def materializeTPTag[A](implicit
+    weakTypeTag: WeakTypeTag[A]
+  ): c.Expr[Tag.TPTag[A]] = {
+    val tpe = weakTypeTag.tpe.dealias.etaExpand
+    val symbol = tpe.typeSymbol
+    if (symbol.isParameter) {
+      c.abort(c.enclosingPosition, "Failed to make TCTag")
+    } else {
+      val tree = q"""_root_.make.Tag.TPTag[${weakTypeTag.tpe}](${symbol.fullName})"""
+      c.Expr[Tag.TPTag[A]](tree)
     }
   }
 

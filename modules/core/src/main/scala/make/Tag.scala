@@ -25,6 +25,11 @@ object Tag {
 
   final case class TpeTag[A](tpe: TpeTag.Type)
   
+  final case class TPTag[A](symbol: String)
+  object TPTag {
+    implicit def materialize[A]: TPTag[A] =
+      macro TpeTagMacro.materializeTPTag[A]
+  }
   final case class TCTag[F[_]](symbol: String)
   object TCTag {
     implicit def materialize[F[_]]: TCTag[F] =
