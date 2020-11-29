@@ -82,7 +82,7 @@ object Graph {
 
     def handleNode(v: Make[F, Any]): HandleOut = v match {
       case Make.Value(v, tag) =>
-        ((_: List[Any]) => v, List.empty, List.empty)
+        ((_: List[Any]) => v(), List.empty, List.empty)
       case Make.Bind(prev, f, tag) =>
         val func = (in: List[Any]) => f(in(0))
         val deps = List(Id.fromTag(prev.tag))

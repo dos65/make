@@ -119,4 +119,5 @@ class MakeTest extends FunSuite {
     val resolved = Make.of[IO, (B, A[IO])]
     assertEquals(resolved.make.unsafeRunSync()._1, B("42", 42))
   }
+
 }

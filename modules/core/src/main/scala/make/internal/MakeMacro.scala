@@ -27,7 +27,6 @@ class MakeMacro(val c: whitebox.Context) {
     state.debug = false
     out match {
       case EmptyTree =>
-        println(state.reverseTraces.mkString("\n\n"))
         val st = extractInstanceSt(atpe.tpe, state.reverseTraces)
         val message = renderInstanceSt(st)
         c.abort(c.enclosingPosition, s"Make for ${atpe.tpe} not found\n" + message)

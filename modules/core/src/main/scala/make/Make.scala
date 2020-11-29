@@ -14,7 +14,7 @@ object Make extends MakeTupleInstances with ContraMakeInstances with LowPrioMake
   def of[F[_], A](implicit m: Make[F, A]): Make[F, A] = m
 
   final private[make] case class Value[F[_], A](
-    v: F[A],
+    v: () => F[A],
     tag: Tag[A]
   ) extends Make[F, A]
 
@@ -31,10 +31,10 @@ object Make extends MakeTupleInstances with ContraMakeInstances with LowPrioMake
   ) extends Make[F, A]
 
   def pure[F[_]: Applicative, A: Tag](a: A): Make[F, A] =
-    Value(Applicative[F].pure(a), Tag.of[A])
+    Value(() => Applicative[F].pure(a), Tag.of[A])
 
-  def eff[F[_], A: Tag](v: F[A]): Make[F, A] =
-    Value(v, Tag.of[A])
+  def eff[F[_], A: Tag](v: => F[A]): Make[F, A] =
+    Value(() => v, Tag.of[A])
 
 
   def widen[A, B <: A]: Contra[A, B] = new Contra[A, B](identity)
