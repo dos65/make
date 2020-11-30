@@ -57,17 +57,21 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
     }
     val implicitDependencies = dependencies.map(_._2)
 
-    
-    val impl = dependencies.reverse.map(_._1).foldLeft(EmptyTree){
-      case (EmptyTree, name) => q"_root_.make.internal.MakeOps.map($name)($create)" 
-      case (tree, name) =>  q"_root_.make.internal.MakeOps.ap($name)($tree)"
-    }
-
     val targetTpe =
       if (typeParams.isEmpty)
         tq"${name.toTypeName}"
       else
         tq"${name.toTypeName}[..${typeParams.map(_.name)}]"
+    
+    val impl =
+      if (dependencies.isEmpty) {
+        q"_root_.make.Make.pure[$effTpe, ${targetTpe}]($create)"
+      } else {
+        dependencies.reverse.map(_._1).foldLeft(EmptyTree){
+          case (EmptyTree, name) => q"_root_.make.internal.MakeOps.map($name)($create)" 
+          case (tree, name) =>  q"_root_.make.internal.MakeOps.ap($name)($tree)"
+        }
+      }
 
     val implicits =
         q"${TermName(c.freshName())}: _root_.cats.Applicative[$effTpe]" ::
@@ -157,7 +161,6 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
               DepParam.create(d, i)
             })
             .toList
-        // TODO empty depdencies??
         val create = createFunction(depParams, clsDef, init)
 
         Clz(clsDef.name, tparams, depParams, implicitParams.toList, create)

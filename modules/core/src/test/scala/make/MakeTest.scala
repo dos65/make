@@ -13,14 +13,23 @@ import make.syntax._
 
 class MakeTest extends FunSuite {
 
- @autoMake
-  class Anno(@anno.Sample a: Int) 
   test("annotated") {
+    @autoMake
+    class Anno(@anno.Sample a: Int) 
+
     import make.annotated._
     implicit val a = Make.pure[IO, Int :@: anno.Sample](42.annotated[anno.Sample])
     Make.of[IO, Anno]
   }
 
+  test("zero parameters autoMake") {
+    @autoMake
+    class ZeroArg {
+      def hello: String = "hello"
+    }
+    val out = Make.of[IO, ZeroArg].make.unsafeRunSync.hello 
+    assertEquals(out, "hello")
+  }
 
   test("instantiate once") {
 
