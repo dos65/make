@@ -14,6 +14,8 @@ class MakeMacro(val c: whitebox.Context) {
   val debugInstanceFullName = "make.LowPrioMake.debugInstance"
   val debugHookFullName = "make.enableDebug.debugHook"
 
+  val shapelessLazyTc = weakTypeOf[shapeless.Lazy[_]].typeConstructor
+
   def debug[F[_], A](implicit
     ftpe: WeakTypeTag[F[X] forSome { type X }],
     atpe: WeakTypeTag[A]
@@ -43,45 +45,82 @@ class MakeMacro(val c: whitebox.Context) {
   ): c.Expr[Debug[Make[F, A]]] = {
 
     if (!state.debug) c.abort(c.enclosingPosition, "debug is not enabled")
-    val makeTc = weakTypeOf[Make[F, _]].typeConstructor
+    state.resolveCache.get(atpe.tpe) match {
+      case Some(ResolveSt.InProgress) => c.abort(c.enclosingPosition, "skip")
+      case Some(ResolveSt.Resolved(tree)) => c.abort(c.enclosingPosition, "skip")
+      case None =>
+        val makeTc = weakTypeOf[Make[F, _]].typeConstructor
+        val makeTpe = appliedType(makeTc, ftpe.tpe, atpe.tpe)
+        state.stack.append(atpe.tpe)
+        val pos = state.stack.size
+        state.resolveCache.update(atpe.tpe, ResolveSt.InProgress)
+        val tree = c.inferImplicitValue(makeTpe)
+        state.resolveCache.update(atpe.tpe, ResolveSt.Resolved(tree))
+        state.stack.remove(pos - 1)
+        tree match {
+          case EmptyTree =>
+            println(s"FAILED: ${atpe.tpe} ${state.stack}")
+            state.stack.lastOption.foreach(state.registerFailedReason(atpe.tpe, _))
+        }
+        c.abort(c.enclosingPosition, "skip")
+      case _ => c.abort(c.enclosingPosition, "skip")
+    } 
 
-    val open = c.openImplicits
+    // val open = c.openImplicits
 
-    val isSelfLoop =
-      if (open.size > 2) {
-        val c = open(2)
-        c.sym.isMacro && c.sym.isMethod && c.sym.name.decodedName.toString == "debugHook"
-      } else {
-        false
-      }
+    // val isSelfLoop =
+    //   if (open.size > 2) {
+    //     val c = open(2)
+    //     c.sym.isMacro && c.sym.isMethod && c.sym.name.decodedName.toString == "debugHook"
+    //   } else {
+    //     false
+    //   }
 
-    if (isSelfLoop) {
-      c.abort(c.enclosingPosition, "skip")
-    } else {
-      val makeTpe = appliedType(makeTc, ftpe.tpe, atpe.tpe)
+    // if (isSelfLoop) {
+    //   c.abort(c.enclosingPosition, "skip")
+    // } else { 
 
-      val instance = 
-        if (state.failedTpe.contains(makeTpe)) EmptyTree else c.inferImplicitValue(makeTpe)
+    //   val makeTc = weakTypeOf[Make[F, _]].typeConstructor
+    //   val makeTpe = appliedType(makeTc, ftpe.tpe, atpe.tpe)
 
-      instance match {
-        case EmptyTree =>
-          state.failedTpe.add(makeTpe)
-          val trace = resolutionTrace(open, makeTc)
+    //   val instance = {
+    //      state.resolveCache.get(atpe.tpe) match {
+    //        case Some(ResolveSt.InProgress) => c.abort(c.enclosingPosition, "skip")
+    //        case Some(ResolveSt.Resolved(tree)) => tree
+    //        case None =>
+    //         state.stack.append(atpe.tpe)
+    //         val pos = state.stack.size
+    //         state.resolveCache.update(atpe.tpe, ResolveSt.InProgress)
+    //         val tree = c.inferImplicitValue(makeTpe)
+    //         state.resolveCache.update(atpe.tpe, ResolveSt.Resolved(tree))
+    //         state.stack.remove(pos - 1)
+    //         tree match {
+    //           case EmptyTree =>
+    //             println(s"FROMSTACK: ${atpe.tpe} : " + state.stack.mkString(", "))
+    //         }
+    //         tree
+    //      } 
+    //   } 
 
-          trace.path.sliding(2).foreach { v =>
-            val target = v(0)
-            val reason = v(1)
-            state.registerFailedReason(target.tpe, reason.sym, reason.tpe)
-          }
-          trace.path.headOption.foreach { v => 
-            state.registerFailedReason(atpe.tpe, v.sym, v.tpe)
-          }
 
-          c.abort(c.enclosingPosition, s"Instance resolution for ${atpe.tpe} failed")
-        case smt =>
-          c.abort(c.enclosingPosition, "Instance exists: skip")
-      }
-    }
+    //   instance match {
+    //     case EmptyTree =>
+
+    //       val trace = resolutionTrace(open, makeTc)
+    //       trace.path.sliding(2).foreach { v =>
+    //         val target = v(0)
+    //         val reason = v(1)
+    //         state.registerFailedReason(target.tpe, reason.sym, reason.tpe)
+    //       }
+    //       trace.path.headOption.foreach { v => 
+    //         state.registerFailedReason(atpe.tpe, v.sym, v.tpe)
+    //       }
+
+    //       c.abort(c.enclosingPosition, s"Instance resolution for ${atpe.tpe} failed")
+    //     case smt =>
+    //       c.abort(c.enclosingPosition, "Instance exists: skip")
+    //   }
+    // }
   }
 
   private def resolutionTrace(
@@ -96,7 +135,7 @@ class MakeMacro(val c: whitebox.Context) {
         if (tc =:= makeTc) {
           val tpe = dealiased.typeArgs(1)
           Some(Part(tpe, c.sym))
-        } else {
+        }else {
           None
         }
       }
@@ -110,14 +149,14 @@ class MakeMacro(val c: whitebox.Context) {
 
   private def extractInstanceSt(
     targetType: c.Type,
-    reverseTraces: mutable.HashMap[Type, mutable.HashMap[c.Symbol, c.Type]]
+    reverseTraces: mutable.HashMap[Type, List[Type]]
   ): InstanceSt = {
     reverseTraces.get(targetType) match {
       case None => InstanceSt.NoInstances(targetType)
       case Some(paths) =>
-        val traces = paths.map { case (sym, tpe) =>
+        val traces = paths.map { tpe =>
           val depSt = extractInstanceSt(tpe, reverseTraces)
-          InstanceSt.FailedTrace(sym, tpe, depSt)
+          InstanceSt.FailedTrace(tpe, depSt)
         }
         InstanceSt.FailedTraces(targetType, traces.toList)
     }
@@ -134,8 +173,7 @@ class MakeMacro(val c: whitebox.Context) {
           sb.append(s"\n${appendIdent}${st.tpe} not found")
         case InstanceSt.FailedTraces(_, traces) =>
           traces.foldLeft(sb) { case (sb, trace) =>
-            val next = sb.append(s"\n${appendIdent}Failed at ${trace.sym.fullName} becase of:")
-            render(next, level + 1, trace.dependencySt)
+            render(sb, level + 1, trace.dependencySt)
           }
       }
     }
@@ -150,7 +188,6 @@ class MakeMacro(val c: whitebox.Context) {
     case class NoInstances(tpe: Type) extends InstanceSt
 
     case class FailedTrace(
-      sym: Symbol,
       dependencyTpe: Type,
       dependencySt: InstanceSt
     )
@@ -161,17 +198,25 @@ class MakeMacro(val c: whitebox.Context) {
   case class Part(tpe: c.Type, sym: Symbol)
   case class Trace(path: List[Part])
 
+  sealed trait ResolveSt
+  object ResolveSt {
+    case object InProgress extends ResolveSt
+    case class Resolved(tree: Tree) extends ResolveSt
+  }
+
   class DebugSt(
     var debug: Boolean = false,
-    val failedTpe: mutable.HashSet[Type] = mutable.HashSet.empty,
-    val reverseTraces: mutable.HashMap[Type, mutable.HashMap[c.Symbol, c.Type]] =
+    val stack: mutable.ListBuffer[Type] = mutable.ListBuffer.empty,
+    val resolveCache: mutable.HashMap[Type, ResolveSt] = mutable.HashMap.empty,
+    val reverseTraces: mutable.HashMap[Type, List[Type]] =
       mutable.HashMap.empty
   ) {
 
-    def registerFailedReason(tpe: Type, at: Symbol, reasonTpe: Type): Unit = {
-      val symSt = reverseTraces.getOrElse(reasonTpe, mutable.HashMap.empty)
-      symSt.update(at, tpe)
-      state.reverseTraces.update(reasonTpe, symSt)
+    def registerFailedReason(targetTpe: Type, prev: Type): Unit = {
+      val curr = reverseTraces.getOrElse(prev, List.empty)
+      val next = targetTpe :: curr
+      reverseTraces.update(prev, next)
     }
+
   }
 }

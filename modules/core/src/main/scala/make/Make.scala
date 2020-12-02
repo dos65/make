@@ -47,9 +47,9 @@ trait ContraMakeInstances {
 
   implicit def contraMakeInstance[F[_]: Applicative, A, B](implicit
     contra: Make.Contra[A, B],
-    m: Make[F, B],
+    m: shapeless.Lazy[Make[F, B]],
     tagB: Tag[A]
-  ): Make[F, A] = MakeOps.map(m)(contra.f)
+  ): Make[F, A] = MakeOps.map(m.value)(contra.f)
 }
 
 trait LowPrioMake {

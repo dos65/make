@@ -52,7 +52,7 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
 
     val dependencies: List[(TermName, c.Tree)] = params.zipWithIndex.map{case (dp, i) =>
       val name = TermName(c.freshName(s"dep$i"))
-      val tree = q"$name: _root_.make.Make[$effTpe, ${dp.tpt}]"
+      val tree = q"$name: _root_.shapeless.Lazy[_root_.make.Make[$effTpe, ${dp.tpt}]]"
       (name, tree)
     }
     val implicitDependencies = dependencies.map(_._2)
@@ -68,8 +68,8 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
         q"_root_.make.Make.pure[$effTpe, ${targetTpe}]($create)"
       } else {
         dependencies.reverse.map(_._1).foldLeft(EmptyTree){
-          case (EmptyTree, name) => q"_root_.make.internal.MakeOps.map($name)($create)" 
-          case (tree, name) =>  q"_root_.make.internal.MakeOps.ap($name)($tree)"
+          case (EmptyTree, name) => q"_root_.make.internal.MakeOps.map(${name}.value)($create)" 
+          case (tree, name) =>  q"_root_.make.internal.MakeOps.ap(${name}.value)($tree)"
         }
       }
 
@@ -137,7 +137,8 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
     typeParams: List[TypeDef],
     params: List[DepParam],
     implicitParams: List[ValDef],
-    create: Tree
+    create: Tree,
+    clzSymbol: Symbol
   )
 
   object Clz {
@@ -163,7 +164,7 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
             .toList
         val create = createFunction(depParams, clsDef, init)
 
-        Clz(clsDef.name, tparams, depParams, implicitParams.toList, create)
+        Clz(clsDef.name, tparams, depParams, implicitParams.toList, create, clsDef.symbol)
       }
     }
 

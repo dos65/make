@@ -15,6 +15,8 @@ final class Graph[F[_], A](
   targetId: Graph.Id
 )(implicit F: Monad[F]) {
 
+  def x: Map[Graph.Id, Graph.RawEntry[F]] = entries 
+
   def initEff: F[A] = {
     val order = initOrder
     val init = F.pure(Map.empty[Graph.Id, Any])

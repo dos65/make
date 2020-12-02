@@ -55,13 +55,16 @@ class TpeTagMacro(val c:blackbox.Context) {
   def materializeTCTag[F[_]](implicit
     weakTypeTag: WeakTypeTag[F[X] forSome {type X}]
   ): c.Expr[Tag.TCTag[F]] = {
-    val tpe = weakTypeTag.tpe.dealias.etaExpand
-    val symbol = tpe.typeSymbol
-    if (symbol.isParameter) {
-      c.abort(c.enclosingPosition, "Failed to make TCTag")
-    } else {
-      val tree = q"""_root_.make.Tag.TCTag[${weakTypeTag.tpe}](${symbol.fullName})"""
-      c.Expr[Tag.TCTag[F]](tree)
+
+    val tpe = weakTypeTag.tpe.typeConstructor
+    tpe match {
+      case ref: TypeRef =>
+         val symbol = ref.sym 
+         val tree = q"""_root_.make.Tag.TCTag[${weakTypeTag.tpe}](${symbol.fullName})"""
+         c.Expr[Tag.TCTag[F]](tree)
+      case x => 
+        c.warning(c.enclosingPosition, s"Failed to create Tag.TCTag for $tpe")
+        c.abort(c.enclosingPosition, "Failed to make TCTag")
     }
   }
 

@@ -11,6 +11,8 @@ class TagTest extends FunSuite {
     assertEquals(func[IO].tpe.render, "make.TagTest.ABC[cats.effect.IO]")
     assertEquals(func2[IO].tpe.render, "cats.effect.IO[scala.Int]")
     assertEquals(func3[String].tpe.render, "scala.collection.immutable.List[java.lang.String]")
+    assertEquals(func[cats.Id].tpe.render, "make.TagTest.ABC[cats.Id]")
+    assertEquals(func2[cats.Id].tpe.render, "cats.Id[scala.Int]")
   }
 
   class ABC[F[_]]
