@@ -28,3 +28,5 @@ trait MakeBasicOps {
     )
 
 }
+
+object MakeBasicOps extends MakeBasicOps

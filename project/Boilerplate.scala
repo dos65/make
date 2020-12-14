@@ -192,23 +192,52 @@ object Boilerplate {
 
       import tv._
 
-      val apArgs = synVals.reverse.dropRight(1)
-      val impl = (1 to arity).foldLeft(""){
-        case ("" , c) => s"MakeOps.map(v._$c)(${synVals.mkString("", " => ", " => ")} ff${`(a..n)`})"
+      val mapFImpl = (1 to arity).foldLeft(""){
+        case ("" , c) => s"MakeOps.mapF(v._$c)(${synVals.mkString("", " => ", " => ")} ff${`(a..n)`})"
         case (acc, c) => s"MakeOps.ap(v._$c)($acc)"   
       }
-      val toArity = arity - 1
-      val funcTags = 
-        (1 to toArity).map(x => {
-          val in = (x to toArity).map(n => (n+'A').toChar).map(_.toChar).mkString(" => ")
-          s"$in => Res" 
-        }).map(s => s"Tag[$s]")
+      val defMapN = {
+        val mapImpl = (1 to arity).foldLeft(""){
+          case ("" , c) => s"MakeOps.map(v._$c)(${synVals.mkString("", " => ", " => ")} ff${`(a..n)`})"
+          case (acc, c) => s"MakeOps.ap(v._$c)($acc)"   
+        }
+        val toArity = arity - 1
+        val funcTags = 
+          (1 to toArity).map(x => {
+            val in = (x to toArity).map(n => (n+'A').toChar).map(_.toChar).mkString(" => ")
+            s"$in => Res" 
+          }).map(s => s"Tag[$s]")
 
 
-      val implicitTags =
-        (s"Tag[${synTypes.mkString("(",",", ")")}]" :: funcTags.toList)
-          .zipWithIndex.map{case (t, i) => s"tag$i: $t"}
-          .mkString(",")
+        val implicitTags =
+          funcTags
+            .toList
+            .zipWithIndex.map{case (t, i) => s"tag$i: $t"}
+            .mkString(",")
+        s"""def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit FF: Applicative[FF], $implicitTags): Make[FF, Res] = $mapImpl"""
+      }
+
+      val defMapFN = {
+        val mapToTuple = (1 to arity).foldLeft(""){
+          case ("" , c) => s"MakeOps.map(v._$c)(${synVals.map(c => s"($c: ${(c-32).toChar})").mkString("", " => ", " => ")} ${`(a..n)`})"
+          case (acc, c) => s"MakeOps.ap(v._$c)($acc)"   
+        }
+        val impl = s"MakeOps.mapF($mapToTuple)({case ${`(a..n)`} => ff${`(a..n)`}})"
+        val toArity = arity - 1
+        val funcTags = 
+          (1 to toArity).map(x => {
+            val in = (x to toArity).map(n => (n+'A').toChar).map(_.toChar).mkString(" => ")
+            s"$in => ${`(A..N)`}" 
+          }).map(s => s"Tag[$s]")
+            .toList
+
+        val implicitTags =
+          (s"Tag[${`(A..N)`}]" :: funcTags) 
+            .zipWithIndex.map{case (t, i) => s"tag$i: $t"}
+            .mkString(",")
+
+        s"def mapFN[Res: Tag](ff: ${`(A..N)`} => FF[Res])(implicit FF: Applicative[FF], $implicitTags): Make[FF, Res] = $impl"
+      }
       
       block"""
            |package make
@@ -218,8 +247,8 @@ object Boilerplate {
            |
            |object tupleOfNMakeSyntaxClasses {
            -  class TupleOfMakeNSyntax$arity[FF[_], ${`A..N`}](private val v: ${`(Make[F, A]..Make[F, N])`("FF")}) extends AnyVal {
-           -    def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit FF: Applicative[FF], $implicitTags): Make[FF, Res] =
-           -      $impl
+           -    $defMapN  
+           -    $defMapFN
            -  }
            |}
            """

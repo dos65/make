@@ -4,6 +4,7 @@ import make.internal.MakeMacro
 import make.internal.MakeOps
 import cats.Applicative
 import scala.reflect.runtime.universe.TypeTag
+import make.internal.MakeBasicOps
 
 sealed abstract class Make[F[_], A] {
   def tag: Tag[A]
@@ -41,7 +42,6 @@ object Make extends ContraMakeInstances with MakeTupleInstances with LowPrioMake
   def contramap[A, B](f: B => A): Contra[A, B] = new Contra[A, B](f)
 
   final class Contra[A, B](private[make] val f: B => A)
-
 }
 
 trait ContraMakeInstances {
