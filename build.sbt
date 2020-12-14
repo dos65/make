@@ -3,7 +3,7 @@ import xerial.sbt.Sonatype._
 lazy val commonSettings = Seq(
   scalaVersion := "2.12.12",
   organization := "io.github.dos65",
-  version := "0.0.3-SNAPSHOT",
+  version := "0.0.31-SNAPSHOT",
   crossScalaVersions := Seq("2.12.12", "2.13.3"),
   libraryDependencies ++= {
     if (is213(scalaVersion.value))
@@ -41,6 +41,7 @@ lazy val make = project.in(file("modules/core"))
     sourceGenerators in Compile += (sourceManaged in Compile).map(dir => Boilerplate.gen(dir)).taskValue,
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "org.scala-lang" % "scala-compiler" % scalaVersion.value,
       "org.typelevel" %% "cats-core" % "2.1.1",
       "com.chuusai" %% "shapeless" % "2.3.3",
       "org.typelevel" %% "cats-effect" % "2.1.3" % "test",

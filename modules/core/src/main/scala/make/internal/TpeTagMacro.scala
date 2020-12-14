@@ -56,7 +56,7 @@ class TpeTagMacro(val c:blackbox.Context) {
     weakTypeTag: WeakTypeTag[F[X] forSome {type X}]
   ): c.Expr[Tag.TCTag[F]] = {
 
-    val tpe = weakTypeTag.tpe.typeConstructor
+    val tpe = weakTypeTag.tpe.finalResultType
     tpe match {
       case ref: TypeRef =>
          val symbol = ref.sym 

@@ -36,17 +36,18 @@ object ExampleZio extends App {
 
   override def run(args: List[String]): URIO[ZEnv, ExitCode] = {
 
-    implicit val depImplAsDep = Make.widen[Dep, DepImpl]
+    ???
+    // implicit val depImplAsDep = Make.widen[Dep, DepImpl]
 
-    implicit val initString = Make.eff[RManaged[Any, ?], String](
-      ZManaged.effect("asd")
-    )
+    // implicit val initString = Make.eff[RManaged[Any, ?], String](
+    //   ZManaged.effect("asd")
+    // )
 
-    import enableDebug._
-    val value = Make.debugOf[RManaged[Any, ?], End]
+    // import enableDebug._
+    // val value = Make.debugOf[RManaged[Any, ?], End]
 
-    for {
-      _ <- value.make.orDie.use(r => putStrLn(r.toString))
-    } yield ExitCode.success
+    // for {
+    //   _ <- value.make.orDie.use(r => putStrLn(r.toString))
+    // } yield ExitCode.success
   }
 }

@@ -21,7 +21,8 @@ object Boilerplate {
 
 
   val templates: Seq[Template] = List(
-    MakeProductNOps, MakeTupleInstances, MakeTupleSyntaxClasses, MakeTupleSyntax
+    MakeProductNOps, MakeTupleInstances, MakeTupleSyntaxClasses, MakeTupleSyntax,
+    TupleOfMakeSyntaxClasses, TupleOfMakeSyntax
   )
 
   /** Returns a seq of the generated files.  As a side-effect, it actually generates them... */
@@ -46,7 +47,7 @@ object Boilerplate {
     The block otherwise behaves as a standard interpolated string with regards to variable substitution.
   */
   object MakeProductNOps extends Template {
-    override def packageName: String = "make/internal/MakeProductNOps"
+    override def packageName: String = "make/internal"
     override def filename: String = "MakeProductNOps.scala"
     override def range: Range = 2 to 22
     override def content(tv: TemplateVals): String = {
@@ -88,7 +89,7 @@ object Boilerplate {
   } 
 
   object MakeTupleInstances extends Template {
-    override def packageName: String = "make/MakeTupleInstances"
+    override def packageName: String = "make"
     override def filename: String = "MakeTupleInstances.scala"
     override def range: Range = 2 to 22
     override def content(tv: TemplateVals): String = {
@@ -102,7 +103,7 @@ object Boilerplate {
           s"$in => ${`(A..N)`}"
         }).map(s => s"Tag[$s]")
 
-      val implictTags =
+      val implicitTags =
         (s"Tag[${synTypes.mkString("(",",", ")")}]" :: funcTags.toList)
           .zipWithIndex.map{case (t, i) => s"tag$i: $t"}
       
@@ -110,12 +111,11 @@ object Boilerplate {
       val deps = (0 until arity).map(n => {
         val tpe = (n+'A').toChar
         val arg = (n+'a').toChar
-        s"$arg: Lazy[Make[FF, $tpe]]"
+        s"$arg: Make[FF, $tpe]"
       })
-      val args = synVals.map(s => s"$s.value").mkString(",")
+      val args = synVals.map(s => s"$s").mkString(",")
 
-      //val implicitValues = (deps ++ implictTags).mkString(",")
-      val implicitValues = (implictTags ++ deps).mkString(",")
+      val implicitValues = (implicitTags ++ deps).mkString(",")
 
 
       block"""
@@ -123,7 +123,6 @@ object Boilerplate {
            |
            |import make.internal.MakeOps
            |import cats.Applicative
-           |import shapeless._
            |
            |trait MakeTupleInstances {
            | 
@@ -135,7 +134,7 @@ object Boilerplate {
   } 
 
   object MakeTupleSyntaxClasses extends Template {
-    override def packageName: String = "make/tupleNSyntaxClasses"
+    override def packageName: String = "make"
     override def filename: String = "tupleNSyntaxClasses.scala"
     override def range: Range = 2 to 22
     override def content(tv: TemplateVals): String = {
@@ -162,7 +161,7 @@ object Boilerplate {
   } 
 
   object MakeTupleSyntax extends Template {
-    override def packageName: String = "make/MakeTupleSyntax"
+    override def packageName: String = "make"
     override def filename: String = "MakeTupleSyntax.scala"
     override def range: Range = 2 to 22
     override def content(tv: TemplateVals): String = {
@@ -179,6 +178,72 @@ object Boilerplate {
            |
            -  implicit def makeToTupleNSyntax$arity[FF[_], ${`A..N`}](make: Make[FF, ${`(A..N)`}]) =
            -    new tupleNSyntaxClasses.MakeTupleNSyntax$arity(make)
+           -
+           |}
+           """
+    }
+  } 
+
+  object TupleOfMakeSyntaxClasses extends Template {
+    override def packageName: String = "make"
+    override def filename: String = "tupleOfMakeSyntaxClasses.scala"
+    override def range: Range = 2 to 22
+    override def content(tv: TemplateVals): String = {
+
+      import tv._
+
+      val apArgs = synVals.reverse.dropRight(1)
+      val impl = (1 to arity).foldLeft(""){
+        case ("" , c) => s"MakeOps.map(v._$c)(${synVals.mkString("", " => ", " => ")} ff${`(a..n)`})"
+        case (acc, c) => s"MakeOps.ap(v._$c)($acc)"   
+      }
+      val toArity = arity - 1
+      val funcTags = 
+        (1 to toArity).map(x => {
+          val in = (x to toArity).map(n => (n+'A').toChar).map(_.toChar).mkString(" => ")
+          s"$in => Res" 
+        }).map(s => s"Tag[$s]")
+
+
+      val implicitTags =
+        (s"Tag[${synTypes.mkString("(",",", ")")}]" :: funcTags.toList)
+          .zipWithIndex.map{case (t, i) => s"tag$i: $t"}
+          .mkString(",")
+      
+      block"""
+           |package make
+           |
+           |import make.internal.MakeOps
+           |import cats.Applicative
+           |
+           |object tupleOfNMakeSyntaxClasses {
+           -  class TupleOfMakeNSyntax$arity[FF[_], ${`A..N`}](private val v: ${`(Make[F, A]..Make[F, N])`("FF")}) extends AnyVal {
+           -    def mapN[Res: Tag](ff: ${`(A..N)`} => Res)(implicit FF: Applicative[FF], $implicitTags): Make[FF, Res] =
+           -      $impl
+           -  }
+           |}
+           """
+    }
+  } 
+
+  object TupleOfMakeSyntax extends Template {
+    override def packageName: String = "make"
+    override def filename: String = "TupleOfMakeSyntax.scala"
+    override def range: Range = 2 to 22
+    override def content(tv: TemplateVals): String = {
+
+      import tv._
+
+      block"""
+           |package make
+           |
+           |import make.internal.MakeOps
+           |import cats.Applicative
+           |
+           |trait TupleOfMakeSyntax {
+           |
+           -  implicit def tupleOfMakeNSyntax$arity[FF[_], ${`A..N`}](tuple: ${`(Make[F, A]..Make[F, N])`("FF")}) =
+           -    new tupleOfNMakeSyntaxClasses.TupleOfMakeNSyntax$arity(tuple)
            -
            |}
            """
@@ -212,6 +277,8 @@ object Boilerplate {
     val `MakeA..MakeN` = (synVals zip synTypes.map(t => s"Make[FF, $t]")) map { case (v, t) => s"$v: $t"} mkString(",")
 
     val `(A..N)`     = if (arity == 1) "Tuple1[A]" else synTypes.mkString("(", ", ", ")")
+    def `(Make[F, A]..Make[F, N])`(F: String): String = 
+      synTypes.map(t => s"Make[$F, $t]") mkString("(", ", ", ")")
     val `(a..n)`     = if (arity == 1) "Tuple1(a)" else synVals.mkString("(", ", ", ")")
   }
 

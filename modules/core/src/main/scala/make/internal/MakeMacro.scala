@@ -11,10 +11,29 @@ class MakeMacro(val c: whitebox.Context) {
 
   val state = MacroState.getOrElseUpdate[DebugSt](c.universe, new DebugSt)
 
-  val debugInstanceFullName = "make.LowPrioMake.debugInstance"
-  val debugHookFullName = "make.enableDebug.debugHook"
+  // val debugInstanceFullName = "make.LowPrioMake.debugInstance"
+  // val debugHookFullName = "make.enableDebug.debugHook"
 
-  val shapelessLazyTc = weakTypeOf[shapeless.Lazy[_]].typeConstructor
+  //val shapelessLazyTc = weakTypeOf[shapeless.Lazy[_]].typeConstructor
+
+  // def wrongDivergenceFix[F[_], A](implicit
+  //   ftpe: WeakTypeTag[F[X] forSome { type X }],
+  //   atpe: WeakTypeTag[A]
+  // ): c.Expr[Make[F, A]] = {
+  //   val seen = state.wrongDivergenceFix.contains(atpe.tpe)
+  //   if (seen) {
+  //     c.abort(c.enclosingPosition, "Failed")
+  //   } else {
+  //     state.wrongDivergenceFix.add(atpe.tpe)
+  //     val makeTc = weakTypeOf[Make[F, _]].typeConstructor
+  //     val searchType = appliedType(makeTc, ftpe.tpe, atpe.tpe)
+
+  //     c.inferImplicitValue(searchType) match {
+  //       case EmptyTree => c.abort(c.enclosingPosition, "Failed")
+  //       case tree => c.Expr[Make[F, A]](tree)
+  //     }
+  //   }
+  // }
 
   def debug[F[_], A](implicit
     ftpe: WeakTypeTag[F[X] forSome { type X }],
@@ -30,6 +49,12 @@ class MakeMacro(val c: whitebox.Context) {
     out match {
       case EmptyTree =>
         val st = extractInstanceSt(atpe.tpe, state.reverseTraces)
+        println("Last:" + st.lastTypes)
+        st.lastTypes.headOption.foreach{ lst => 
+          c.universe.asInstanceOf[scala.tools.nsc.Global].analyzer.resetImplicits()
+          val sLT = appliedType(makeTc, ftpe.tpe, lst)
+          println(c.inferImplicitValue(sLT))
+        }
         val message = renderInstanceSt(st)
         c.abort(c.enclosingPosition, s"Make for ${atpe.tpe} not found\n" + message)
       case tree =>
@@ -46,8 +71,14 @@ class MakeMacro(val c: whitebox.Context) {
 
     if (!state.debug) c.abort(c.enclosingPosition, "debug is not enabled")
     state.resolveCache.get(atpe.tpe) match {
-      case Some(ResolveSt.InProgress) => c.abort(c.enclosingPosition, "skip")
-      case Some(ResolveSt.Resolved(tree)) => c.abort(c.enclosingPosition, "skip")
+      case Some(ResolveSt.InProgress) =>
+        println(s"INPROGRESS: ${atpe.tpe} ${state.stack}")
+        println(c.openImplicits.mkString("\n   "))
+        c.abort(c.enclosingPosition, "skip")
+      case Some(ResolveSt.Resolved(tree)) =>
+        println(s"RESOLVED: ${atpe.tpe} ${state.stack}")
+        println(c.openImplicits.mkString("\n   "))
+        c.abort(c.enclosingPosition, "skip")
       case None =>
         val makeTc = weakTypeOf[Make[F, _]].typeConstructor
         val makeTpe = appliedType(makeTc, ftpe.tpe, atpe.tpe)
@@ -60,91 +91,21 @@ class MakeMacro(val c: whitebox.Context) {
         tree match {
           case EmptyTree =>
             println(s"FAILED: ${atpe.tpe} ${state.stack}")
+            println(c.openImplicits.mkString("\n   "))
+            println()
             state.stack.lastOption.foreach(state.registerFailedReason(atpe.tpe, _))
         }
         c.abort(c.enclosingPosition, "skip")
       case _ => c.abort(c.enclosingPosition, "skip")
     } 
-
-    // val open = c.openImplicits
-
-    // val isSelfLoop =
-    //   if (open.size > 2) {
-    //     val c = open(2)
-    //     c.sym.isMacro && c.sym.isMethod && c.sym.name.decodedName.toString == "debugHook"
-    //   } else {
-    //     false
-    //   }
-
-    // if (isSelfLoop) {
-    //   c.abort(c.enclosingPosition, "skip")
-    // } else { 
-
-    //   val makeTc = weakTypeOf[Make[F, _]].typeConstructor
-    //   val makeTpe = appliedType(makeTc, ftpe.tpe, atpe.tpe)
-
-    //   val instance = {
-    //      state.resolveCache.get(atpe.tpe) match {
-    //        case Some(ResolveSt.InProgress) => c.abort(c.enclosingPosition, "skip")
-    //        case Some(ResolveSt.Resolved(tree)) => tree
-    //        case None =>
-    //         state.stack.append(atpe.tpe)
-    //         val pos = state.stack.size
-    //         state.resolveCache.update(atpe.tpe, ResolveSt.InProgress)
-    //         val tree = c.inferImplicitValue(makeTpe)
-    //         state.resolveCache.update(atpe.tpe, ResolveSt.Resolved(tree))
-    //         state.stack.remove(pos - 1)
-    //         tree match {
-    //           case EmptyTree =>
-    //             println(s"FROMSTACK: ${atpe.tpe} : " + state.stack.mkString(", "))
-    //         }
-    //         tree
-    //      } 
-    //   } 
-
-
-    //   instance match {
-    //     case EmptyTree =>
-
-    //       val trace = resolutionTrace(open, makeTc)
-    //       trace.path.sliding(2).foreach { v =>
-    //         val target = v(0)
-    //         val reason = v(1)
-    //         state.registerFailedReason(target.tpe, reason.sym, reason.tpe)
-    //       }
-    //       trace.path.headOption.foreach { v => 
-    //         state.registerFailedReason(atpe.tpe, v.sym, v.tpe)
-    //       }
-
-    //       c.abort(c.enclosingPosition, s"Instance resolution for ${atpe.tpe} failed")
-    //     case smt =>
-    //       c.abort(c.enclosingPosition, "Instance exists: skip")
-    //   }
-    // }
   }
 
-  private def resolutionTrace(
-    openImplicits: List[c.ImplicitCandidate],
-    makeTc: c.Type
-  ): Trace = {
-    val filtered = openImplicits
-      .filter(c => !isDebugCandidate(c))
-      .flatMap { c =>
-        val dealiased = c.pt.dealias
-        val tc = dealiased.typeConstructor
-        if (tc =:= makeTc) {
-          val tpe = dealiased.typeArgs(1)
-          Some(Part(tpe, c.sym))
-        }else {
-          None
-        }
-      }
-    Trace(filtered)
-  }
-
-  private def isDebugCandidate(candidate: c.ImplicitCandidate): Boolean = {
-    val fullPath = candidate.sym.fullName
-    fullPath == debugHookFullName || fullPath == debugInstanceFullName
+  def debugHook2[F[_], A](implicit
+    ftpe: WeakTypeTag[F[X] forSome { type X }],
+    atpe: WeakTypeTag[A]
+  ): c.Expr[Make[F, A]] = {
+    println(s"LAST CHANCE FOR ${atpe.tpe}")
+    c.abort(c.enclosingPosition, "skip")
   }
 
   private def extractInstanceSt(
@@ -181,8 +142,19 @@ class MakeMacro(val c: whitebox.Context) {
     render(new StringBuilder, 1, st).toString
   }
 
-  sealed trait InstanceSt {
+  sealed trait InstanceSt { self =>
     def tpe: Type
+    def lastTypes: List[Type] = {
+
+      def extract(acc: List[Type], v: InstanceSt): List[Type] = {
+        v match {
+          case InstanceSt.NoInstances(tpe) => tpe :: acc
+          case InstanceSt.FailedTraces(_, traces) =>
+            traces.foldLeft(acc){ case (a, st) => extract(a, st.dependencySt)}
+        }
+      }
+      extract(List.empty, self)
+    }
   }
   object InstanceSt {
     case class NoInstances(tpe: Type) extends InstanceSt
@@ -195,9 +167,6 @@ class MakeMacro(val c: whitebox.Context) {
     case class FailedTraces(tpe: Type, traces: List[FailedTrace]) extends InstanceSt
   }
 
-  case class Part(tpe: c.Type, sym: Symbol)
-  case class Trace(path: List[Part])
-
   sealed trait ResolveSt
   object ResolveSt {
     case object InProgress extends ResolveSt
@@ -206,7 +175,9 @@ class MakeMacro(val c: whitebox.Context) {
 
   class DebugSt(
     var debug: Boolean = false,
+    val wrongDivergenceFix: mutable.HashSet[Type] = mutable.HashSet.empty, 
     val stack: mutable.ListBuffer[Type] = mutable.ListBuffer.empty,
+    val initSt: mutable.HashSet[Type] = mutable.HashSet.empty,
     val resolveCache: mutable.HashMap[Type, ResolveSt] = mutable.HashMap.empty,
     val reverseTraces: mutable.HashMap[Type, List[Type]] =
       mutable.HashMap.empty

@@ -5,7 +5,7 @@ import cats.Monad
 import cats.Functor
 import cats.Applicative
 
-object syntax extends MakeTupleSyntax {
+object syntax extends MakeTupleSyntax with TupleOfMakeSyntax {
   implicit def makeToBasicSyntax[F[_], A](make: Make[F, A]): MakeBasicSyntax[F, A] =
     new MakeBasicSyntax(make)
 }
