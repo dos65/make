@@ -11,30 +11,6 @@ class MakeMacro(val c: whitebox.Context) {
 
   val state = MacroState.getOrElseUpdate[DebugSt](c.universe, new DebugSt)
 
-  // val debugInstanceFullName = "make.LowPrioMake.debugInstance"
-  // val debugHookFullName = "make.enableDebug.debugHook"
-
-  //val shapelessLazyTc = weakTypeOf[shapeless.Lazy[_]].typeConstructor
-
-  // def wrongDivergenceFix[F[_], A](implicit
-  //   ftpe: WeakTypeTag[F[X] forSome { type X }],
-  //   atpe: WeakTypeTag[A]
-  // ): c.Expr[Make[F, A]] = {
-  //   val seen = state.wrongDivergenceFix.contains(atpe.tpe)
-  //   if (seen) {
-  //     c.abort(c.enclosingPosition, "Failed")
-  //   } else {
-  //     state.wrongDivergenceFix.add(atpe.tpe)
-  //     val makeTc = weakTypeOf[Make[F, _]].typeConstructor
-  //     val searchType = appliedType(makeTc, ftpe.tpe, atpe.tpe)
-
-  //     c.inferImplicitValue(searchType) match {
-  //       case EmptyTree => c.abort(c.enclosingPosition, "Failed")
-  //       case tree => c.Expr[Make[F, A]](tree)
-  //     }
-  //   }
-  // }
-
   def debug[F[_], A](implicit
     ftpe: WeakTypeTag[F[X] forSome { type X }],
     atpe: WeakTypeTag[A]
@@ -49,12 +25,6 @@ class MakeMacro(val c: whitebox.Context) {
     out match {
       case EmptyTree =>
         val st = extractInstanceSt(atpe.tpe, state.reverseTraces)
-        println("Last:" + st.lastTypes)
-        st.lastTypes.headOption.foreach{ lst => 
-          c.universe.asInstanceOf[scala.tools.nsc.Global].analyzer.resetImplicits()
-          val sLT = appliedType(makeTc, ftpe.tpe, lst)
-          println(c.inferImplicitValue(sLT))
-        }
         val message = renderInstanceSt(st)
         c.abort(c.enclosingPosition, s"Make for ${atpe.tpe} not found\n" + message)
       case tree =>
@@ -71,14 +41,8 @@ class MakeMacro(val c: whitebox.Context) {
 
     if (!state.debug) c.abort(c.enclosingPosition, "debug is not enabled")
     state.resolveCache.get(atpe.tpe) match {
-      case Some(ResolveSt.InProgress) =>
-        println(s"INPROGRESS: ${atpe.tpe} ${state.stack}")
-        println(c.openImplicits.mkString("\n   "))
-        c.abort(c.enclosingPosition, "skip")
-      case Some(ResolveSt.Resolved(tree)) =>
-        println(s"RESOLVED: ${atpe.tpe} ${state.stack}")
-        println(c.openImplicits.mkString("\n   "))
-        c.abort(c.enclosingPosition, "skip")
+      case Some(ResolveSt.InProgress) => c.abort(c.enclosingPosition, "skip")
+      case Some(ResolveSt.Resolved(tree)) => c.abort(c.enclosingPosition, "skip")
       case None =>
         val makeTc = weakTypeOf[Make[F, _]].typeConstructor
         val makeTpe = appliedType(makeTc, ftpe.tpe, atpe.tpe)
@@ -90,22 +54,11 @@ class MakeMacro(val c: whitebox.Context) {
         state.stack.remove(pos - 1)
         tree match {
           case EmptyTree =>
-            println(s"FAILED: ${atpe.tpe} ${state.stack}")
-            println(c.openImplicits.mkString("\n   "))
-            println()
             state.stack.lastOption.foreach(state.registerFailedReason(atpe.tpe, _))
         }
         c.abort(c.enclosingPosition, "skip")
       case _ => c.abort(c.enclosingPosition, "skip")
     } 
-  }
-
-  def debugHook2[F[_], A](implicit
-    ftpe: WeakTypeTag[F[X] forSome { type X }],
-    atpe: WeakTypeTag[A]
-  ): c.Expr[Make[F, A]] = {
-    println(s"LAST CHANCE FOR ${atpe.tpe}")
-    c.abort(c.enclosingPosition, "skip")
   }
 
   private def extractInstanceSt(
@@ -175,9 +128,7 @@ class MakeMacro(val c: whitebox.Context) {
 
   class DebugSt(
     var debug: Boolean = false,
-    val wrongDivergenceFix: mutable.HashSet[Type] = mutable.HashSet.empty, 
     val stack: mutable.ListBuffer[Type] = mutable.ListBuffer.empty,
-    val initSt: mutable.HashSet[Type] = mutable.HashSet.empty,
     val resolveCache: mutable.HashMap[Type, ResolveSt] = mutable.HashMap.empty,
     val reverseTraces: mutable.HashMap[Type, List[Type]] =
       mutable.HashMap.empty
