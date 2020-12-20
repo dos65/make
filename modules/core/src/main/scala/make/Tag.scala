@@ -25,7 +25,7 @@ object Tag {
 
   final case class TpeTag[A](tpe: TpeTag.Type)
   
-  final case class TPTag[A](symbol: String)
+  final case class TPTag[A](tpe: TpeTag.Type)
   object TPTag {
     implicit def materialize[A]: TPTag[A] =
       macro TpeTagMacro.materializeTPTag[A]
@@ -50,7 +50,7 @@ object Tag {
       def render: String = {
         val argsStr = arguments match {
           case Nil => ""
-          case lst => lst.mkString("[", ",", "]")
+          case lst => lst.mkString("[", ", ", "]")
         }
         s"$symbol$argsStr"
       }

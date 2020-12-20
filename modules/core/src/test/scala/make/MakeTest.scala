@@ -118,14 +118,13 @@ class MakeTest extends FunSuite {
     case class B(a: String, i: Int)
 
     @autoMake
-    case class C(b: B, a: A[IO])
+    case class C(b: B)
 
     implicit def bMake[F[_]: Applicative](
       implicit
-         intM: Make[F, Int],
-         aM: Make[F, A[F]]
+         deps: Make[F, (Int, A[F])],
     ): Make[F, B] = 
-      (intM, aM).mapFN((i, a) => a.value.map(v => B(v, i)))
+      deps.mapFN((i, a) => a.value.map(v => B(v, i)))
 
     import enableDebug._
 
@@ -134,7 +133,7 @@ class MakeTest extends FunSuite {
 
     
     val resolved = Make.of[IO, (C, B)]
-    // assertEquals(resolved.make.unsafeRunSync(), B("42", 42))
+    assertEquals(resolved.make.unsafeRunSync(), (C(B("42", 42)), B("42", 42)))
   }
 
 }
