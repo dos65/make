@@ -3,7 +3,6 @@ package make.internal
 import scala.reflect.macros.blackbox
 import make.Tag.TpeTag
 import make.Tag
-import scala.reflect.internal.Constants
 
 class TpeTagMacro(val c: blackbox.Context) {
 
@@ -11,10 +10,8 @@ class TpeTagMacro(val c: blackbox.Context) {
 
   def materializeTpeTag[A : WeakTypeTag]: c.Expr[TpeTag[A]] = {
     val tpe = weakTypeOf[A]
-    println(s"CALL MATERIALIZE: $tpe ${tpe.typeSymbol.isParameter}")
     val value = transformTpe3(tpe)
     val tree = q"_root_.make.Tag.TpeTag[${tpe}]($value)"
-    println(s"OK!! $tree")
     c.Expr[TpeTag[A]](tree)
   }
 
@@ -34,14 +31,6 @@ class TpeTagMacro(val c: blackbox.Context) {
   private def processTypeParameters(symbolName: c.Tree, t: c.Type): c.Tree = {
     val inner = t.dealias.typeArgs.map(transformTpe3)
     q"_root_.make.Tag.TpeTag.Type($symbolName, $inner)"
-    // t.dealias match {
-    //   case ref: TypeRef =>
-    //     val inner = ref.args.map(transformTpe3)
-    //     q"_root_.make.Tag.TpeTag.Type($symbolName, $inner)"
-    //   case x => 
-    //     c.info(c.enclosingPosition, s"TpeTag not implemented for $x: ${x.getClass}", true)
-    //     c.abort(c.enclosingPosition, "Not implemented")
-    // }
   }
 
   private def transformTpeParameter(t: c.Type): c.Tree = {
@@ -53,22 +42,6 @@ class TpeTagMacro(val c: blackbox.Context) {
         }
       case _ => searchTPTag(t)
     }
-    // val kind = t.dealias.typeArgs
-    // println(s"TYPE ARGS for $t : $kind")
-    // kind.size match {
-    //   case 0 => searchTPTag(t)
-    //   case 1 => processTypeParameters(searchTCTag(t), t)
-    //   case n => c.abort(c.enclosingPosition, "Not implemented")
-    // }
-
-    // t.dealias match {
-    //   case tpe: TypeRef =>
-    //     val inner = tpe.args.map(transformTpe3)
-    //     q"_root_.make.Tag.TpeTag.Type(${symbolTree}, $inner)"
-    //   case x => 
-    //     c.info(c.enclosingPosition, s"TpeTag(parameter) not implemented for $x: ${x.getClass}", true)
-    //     c.abort(c.enclosingPosition, "Not implemented")
-    // }
   }
 
 
@@ -86,106 +59,6 @@ class TpeTagMacro(val c: blackbox.Context) {
       .getOrElse(c.abort(c.enclosingPosition, "Not implemented"))
   }
 
-  // private def transformTpe2(t: c.Type): c.Tree = {
-  //   println(s"transform $t ${t.typeSymbol.isParameter} ${t.getClass}")
-  //   val normalized = t
-  //   if (t.typeSymbol.isParameter) {
-  //        t.dealias match {
-  //         case ref: PolyType => 
-  //           println(s"IS POLY ${ref.typeParams} ${ref.typeArgs}")
-  //           val kind = math.max(ref.typeParams.size, ref.typeArgs.size)
-  //           ref.typeParams.size match {
-  //             case 0 =>
-  //               val inner = ref.typeArgs.map(transformTpe2)
-  //               q"_root_.make.Tag.TpeTag.Type(${ref.typeSymbol.fullName}, $inner)"
-  //             case 1 => 
-  //               val tcTagTpe = appliedType(weakTypeOf[Tag.TCTag[X] forSome {type X[_]}].typeConstructor, t.typeConstructor)
-  //               optionFromImplicitTree(c.inferImplicitValue(tcTagTpe))
-  //                 .map(t => q"$t.tpe")
-  //                 .getOrElse(c.abort(c.enclosingPosition, "Not implemented"))
-  //             case n =>
-  //                c.abort(c.enclosingPosition, "Not implemented")
-  //           }
-  //         case ref: TypeRef =>
-  //           ref.typeParams.size match {
-  //             case 0 =>
-  //               val inner = ref.typeArgs.map(transformTpe2)
-  //               q"_root_.make.Tag.TpeTag.Type(${ref.typeSymbol.fullName}, $inner)"
-  //             case 1 => 
-  //               val tcTagTpe = appliedType(weakTypeOf[Tag.TCTag[X] forSome {type X[_]}].typeConstructor, t.typeConstructor)
-  //               optionFromImplicitTree(c.inferImplicitValue(tcTagTpe))
-  //                 .map(t => q"$t.tpe")
-  //                 .getOrElse(c.abort(c.enclosingPosition, "Not implemented"))
-  //             case n =>
-  //                c.abort(c.enclosingPosition, "Not implemented")
-  //           }
-            
-  //         // case PolyType(typeParams, _) =>
-  //         //   println(s"POLY TYPE: $typeParams")
-  //         //   typeParams.size match {
-  //         //     case 1 => 
-  //         //       val tcTagTpe = appliedType(weakTypeOf[Tag.TCTag[X] forSome {type X[_]}].typeConstructor, t.typeConstructor)
-  //         //       optionFromImplicitTree(c.inferImplicitValue(tcTagTpe))
-  //         //         .map(t => q"$t.tpe")
-  //         //         .getOrElse(c.abort(c.enclosingPosition, "Not implemented"))
-  //         //     case n =>
-  //         //      c.abort(c.enclosingPosition, "Not implemented")
-  //         //   }
-  //         // case x if x.typeSymbol.isParameter =>
-  //         //   val tagTpe = appliedType(weakTypeOf[Tag.TPTag[X] forSome {type X}].typeConstructor, t)
-  //         //   optionFromImplicitTree(c.inferImplicitValue(tagTpe))
-  //         //     .map{t => q"$t.tpe"}
-  //         //     .getOrElse(c.abort(c.enclosingPosition, "Not implemented"))
-  //         case x =>
-  //           c.abort(c.enclosingPosition, "Not implemented")
-  //       }
-  //   } else {
-  //     t match {
-  //       case ref: TypeRef =>
-  //         val inner = ref.args.map(transformTpe2)
-  //         q"_root_.make.Tag.TpeTag.Type(${ref.typeSymbol.fullName}, $inner)"
-  //       case x => 
-  //         c.info(c.enclosingPosition, s"TpeTag not implemented for $x: ${x.getClass}", true)
-  //         c.abort(c.enclosingPosition, "Not implemented")
-  //     }
-  //   }
-  // }
-
-  // private def transformTpe(t: c.Type): c.Tree = {
-  //   val normalized = t.dealias.etaExpand
-  //   println(normalized + " " + normalized.getClass)
-  //   val resolved = 
-  //     if (normalized.typeSymbol.isParameter) {
-  //       normalized match {
-  //         case PolyType(typeParams, _) =>
-  //           println(s"POLY TYPE: $typeParams")
-  //           typeParams.size match {
-  //             case 1 => 
-  //               val tcTagTpe = appliedType(weakTypeOf[Tag.TCTag[X] forSome {type X[_]}].typeConstructor, t.typeConstructor)
-  //               optionFromImplicitTree(c.inferImplicitValue(tcTagTpe))
-  //                 .map(t => q"$t.tpe")
-  //             case n =>
-  //               None
-  //           }
-  //         case x if x.typeSymbol.isParameter =>
-  //           val tagTpe = appliedType(weakTypeOf[Tag.TPTag[X] forSome {type X}].typeConstructor, t)
-  //           optionFromImplicitTree(c.inferImplicitValue(tagTpe))
-  //             .map{t => q"$t.tpe"}
-  //         case x => None
-  //       }
-  //     } else {
-  //        Some(q"${normalized.typeSymbol.fullName}")
-  //     }
-    
-  //   resolved match {
-  //     case None => c.abort(c.enclosingPosition, s"Not found Tag for $t")
-  //     case Some(tree) =>
-  //       tree
-  //       // val arguments = t.typeArgs.map(transformTpe)
-  //       // q"_root_.make.Tag.TpeTag.Type($tree, List(..$arguments))"
-  //   }
-  // }
-
   private def optionFromImplicitTree(tree: c.Tree): Option[c.Tree] =
     tree match {
       case EmptyTree => None
@@ -197,7 +70,6 @@ class TpeTagMacro(val c: blackbox.Context) {
   ): c.Expr[Tag.TCTag[F]] = {
 
     val tpe = weakTypeTag.tpe
-    println(s"TCTAG: ${tpe} ${tpe.getClass}")
     tpe match {
       case tpe: PolyType => 
          val symbol = c.internal.fullyInitialize(tpe.resultType.typeSymbol)
@@ -236,12 +108,10 @@ class TpeTagMacro(val c: blackbox.Context) {
         // see test case with cats.Id
         val skip =
           name.startsWith("<local ") || name == "package" || (sym.isAbstract && sym.isParameter)
-        // val skip = false
         val next = if (skip) acc else name :: acc
         loop(sym.owner, next)
       }
     }
-    println(s.fullName)
     loop(s, List.empty)
   }
 

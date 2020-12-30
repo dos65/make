@@ -52,7 +52,7 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
 
     val dependencies: List[(TermName, c.Tree)] = params.zipWithIndex.map{case (dp, i) =>
       val name = TermName(c.freshName(s"dep$i"))
-      val tree = q"$name: _root_.make.Make[$effTpe, ${dp.tpt}]"
+      val tree = q"$name: _root_.make.Dep[$effTpe, ${dp.tpt}]"
       (name, tree)
     }
     val implicitDependencies = dependencies.map(_._2)
@@ -68,8 +68,8 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
         q"_root_.make.Make.pure[$effTpe, ${targetTpe}]($create)"
       } else {
         dependencies.reverse.map(_._1).foldLeft(EmptyTree){
-          case (EmptyTree, name) => q"_root_.make.internal.MakeOps.map(${name})($create)" 
-          case (tree, name) =>  q"_root_.make.internal.MakeOps.ap(${name})($tree)"
+          case (EmptyTree, name) => q"_root_.make.internal.MakeOps.map(${name}.value)($create)" 
+          case (tree, name) =>  q"_root_.make.internal.MakeOps.ap(${name}.value)($tree)"
         }
       }
 
@@ -118,7 +118,7 @@ class MakeAnnotationMacro(val c: blackbox.Context) {
         case Apply(Select(New(annoSelect), _), _) =>
           annoSelect
         case _ =>
-          c.abort(c.enclosingPosition, "Annotation descontruction failed")
+          c.abort(c.enclosingPosition, "Annotation decontruction failed")
       }
     }
   }

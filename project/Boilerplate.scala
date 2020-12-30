@@ -56,8 +56,8 @@ object Boilerplate {
 
       val apArgs = synVals.reverse.dropRight(1)
       val impl = synVals.foldLeft(""){
-        case ("" , c) => s"map($c)(${synVals.mkString("", " => ", " => ")} ${`(a..n)`})"
-        case (acc, c) => s"ap($c)($acc)"   
+        case ("" , c) => s"MakeBasicOps.map($c)(${synVals.mkString("", " => ", " => ")} ${`(a..n)`})"
+        case (acc, c) => s"MakeBasicOps.ap($c)($acc)"   
       }
       val toArity = arity - 1
       val funcTags = 
@@ -79,7 +79,7 @@ object Boilerplate {
            |import make.Tag
            |import cats.Applicative
            |
-           |trait MakeProductNOps extends MakeBasicOps {
+           |trait MakeProductNOps {
            | 
            -  def productN[FF[_]: Applicative, ${`A..N`}](${`MakeA..MakeN`})(implicit $implictTags): Make[FF, ${`(A..N)`}] =
            -    $impl
@@ -111,9 +111,9 @@ object Boilerplate {
       val deps = (0 until arity).map(n => {
         val tpe = (n+'A').toChar
         val arg = (n+'a').toChar
-        s"$arg: Make[FF, $tpe]"
+        s"$arg: Dep[FF, $tpe]"
       })
-      val args = synVals.map(s => s"$s").mkString(",")
+      val args = synVals.map(s => s"$s.value").mkString(",")
 
       val implicitValues = (implicitTags ++ deps).mkString(",")
 

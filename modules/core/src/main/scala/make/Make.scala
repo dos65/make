@@ -5,6 +5,7 @@ import make.internal.MakeOps
 import cats.Applicative
 import scala.reflect.runtime.universe.TypeTag
 import make.internal.MakeBasicOps
+import make.internal.DepMacro
 
 sealed abstract class Make[F[_], A] {
   def tag: Tag[A]
@@ -12,7 +13,7 @@ sealed abstract class Make[F[_], A] {
 
 object Make extends ContraMakeInstances with MakeTupleInstances with LowPrioMake {
 
-  def of[F[_], A](implicit m: Make[F, A]): Make[F, A] = m
+  def of[F[_], A](implicit m: Dep[F, A]): Make[F, A] = m.value
 
   final private[make] case class Value[F[_], A](
     v: () => F[A],
@@ -42,15 +43,16 @@ object Make extends ContraMakeInstances with MakeTupleInstances with LowPrioMake
   def contramap[A, B](f: B => A): Contra[A, B] = new Contra[A, B](f)
 
   final class Contra[A, B](private[make] val f: B => A)
+
 }
 
 trait ContraMakeInstances {
 
   implicit def contraMakeInstance[F[_]: Applicative, A, B](implicit
     contra: Make.Contra[A, B],
-    m: Make[F, B],
+    m: Dep[F, B],
     tagB: Tag[A]
-  ): Make[F, A] = MakeOps.map(m)(contra.f)
+  ): Make[F, A] = MakeOps.map(m.value)(contra.f)
 }
 
 trait LowPrioMake {
