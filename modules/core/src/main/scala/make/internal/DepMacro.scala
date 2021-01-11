@@ -14,11 +14,21 @@ class DepMacro(val c: whitebox.Context) {
     atpe: WeakTypeTag[A]
   ): c.Expr[Dep[F, A]] = {
     val state = getOrCreateState
-    state.infer[F](ftpe.tpe, atpe.tpe) match {
-      case EmptyTree =>
-        c.abort(c.enclosingPosition, "failed")
-      case tree =>
-        c.Expr[Dep[F, A]](q"_root_.make.Dep[${ftpe.tpe}, ${atpe.tpe}]($tree)")
+    state.stack.find(_ == atpe.tpe) match {
+      case None => 
+        state.stack.prepend(atpe.tpe)
+        state.cache.get(atpe.tpe).getOrElse(state.infer[F](ftpe.tpe, atpe.tpe)) match {
+          case EmptyTree =>
+            c.abort(c.enclosingPosition, "failed")
+          case tree =>
+            state.stack.remove(0)
+            state.cache.update(atpe.tpe, tree)
+            c.Expr[Dep[F, A]](q"_root_.make.Dep[${ftpe.tpe}, ${atpe.tpe}]($tree)")
+        }
+      case Some(_) =>
+        // TODO
+        println(s"-----CYCLE!!!! ${atpe} ${state.stack}")
+        c.abort(c.enclosingPosition, "Cycle detected")
     }
   }
 
@@ -28,7 +38,7 @@ class DepMacro(val c: whitebox.Context) {
         .flatMap(c => c.internal.attachments(c.macroApplication).get[State])
     existing match {
       case None =>
-        val st = new State(mutable.HashSet.empty)
+        val st = new State(mutable.ListBuffer.empty, mutable.HashMap.empty)
         c.internal.updateAttachment(c.macroApplication, st)
         st
       case Some(st) => st
@@ -36,7 +46,10 @@ class DepMacro(val c: whitebox.Context) {
   }
 
 
-  class State(val seen: mutable.HashSet[Type]) {
+  class State(
+    val stack: mutable.ListBuffer[Type],
+    val cache: mutable.HashMap[Type, Tree]
+  ) {
 
     def infer[F[_]](ftpe: c.Type, atpe: c.Type): c.Tree = {
       val makeTc = c.universe.weakTypeOf[Make[F, _]].typeConstructor

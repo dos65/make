@@ -12,6 +12,7 @@ import make.Tag.TpeTag
 import make.syntax._
 import scala.concurrent.ExecutionContext
 import make.internal.MakeOps
+import shapeless.test.illTyped
 
 class MakeTest extends FunSuite {
 
@@ -114,7 +115,6 @@ class MakeTest extends FunSuite {
 
   test("diverging implicit(tuples)") {
 
-
     case class A[F[_]](value: F[String])
     case class B(a: String, i: Int)
 
@@ -139,6 +139,18 @@ class MakeTest extends FunSuite {
     
     val resolved = Make.debugOf[IO, (C, B)]
     assertEquals(resolved.make.unsafeRunSync(), (C(B("42", 42)), B("42", 42)))
+  }
+
+  test("doesn't allow cycles") {
+    illTyped(
+      """
+        @autoMake
+        case class A(b: B)
+        @autoMake
+        case class B(a: A)
+        Make.of[IO, B]
+      """
+    )
   }
 
 }
