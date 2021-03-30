@@ -70,17 +70,22 @@ class TpeTagMacro(val c: blackbox.Context) {
   ): c.Expr[Tag.TCTag[F]] = {
 
     val tpe = weakTypeTag.tpe
+    tpe.etaExpand
     tpe match {
-      case tpe: PolyType => 
-         val symbol = c.internal.fullyInitialize(tpe.resultType.typeSymbol)
-         val name = fullName(symbol)
-         val tree = q"""_root_.make.Tag.TCTag[${weakTypeTag.tpe}](${name})"""
-         c.Expr[Tag.TCTag[F]](tree)
+      case tpe: PolyType =>
+        val symbol = c.internal.fullyInitialize(tpe.resultType.typeSymbol)
+        val name = fullName(symbol)
+        val tree = q"""_root_.make.Tag.TCTag[${weakTypeTag.tpe}](${name})"""
+        c.Expr[Tag.TCTag[F]](tree)
       case ref: TypeRef =>
-         val symbol = ref.sym 
-         val name = fullName(symbol)
-         val tree = q"""_root_.make.Tag.TCTag[${weakTypeTag.tpe}](${name})"""
-         c.Expr[Tag.TCTag[F]](tree)
+        if (ref.sym.isParameter) {
+          c.abort(c.enclosingPosition, "Failed to make TCTag")
+        } else {
+          val symbol = ref.sym 
+          val name = fullName(symbol)
+          val tree = q"""_root_.make.Tag.TCTag[${weakTypeTag.tpe}](${name})"""
+          c.Expr[Tag.TCTag[F]](tree)
+        }
       case x => 
         c.warning(c.enclosingPosition, s"Failed to create Tag.TCTag for $tpe")
         c.abort(c.enclosingPosition, "Failed to make TCTag")

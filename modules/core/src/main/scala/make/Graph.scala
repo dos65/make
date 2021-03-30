@@ -20,6 +20,7 @@ final class Graph[F[_], A](
   def initEff: F[A] = {
     val order = initOrder
     val init = F.pure(Map.empty[Graph.Id, Any])
+    println(s"Enries: ${entries.mkString("\n")}")
 
     val rs = order.foldLeft(init) { case (rs, id) =>
       F.flatMap(rs)(depsMap => {

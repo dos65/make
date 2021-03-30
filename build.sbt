@@ -1,7 +1,6 @@
 import xerial.sbt.Sonatype._
 
 lazy val commonSettings = Seq(
-  //scalaVersion := "2.12.12-bin-SNAPSHOT",
   scalaVersion := "2.12.12",
   organization := "io.github.dos65",
   version := "0.0.31-SNAPSHOT",
@@ -37,16 +36,18 @@ lazy val make = project.in(file("modules/core"))
   .settings(
     name := "make",
     scalacOptions ++= Seq(
-      "-language:experimental.macros"
+      "-language:experimental.macros",
+      //"-Xprint:all",
+      //"-Ydebug"
     ),
     sourceGenerators in Compile += (sourceManaged in Compile).map(dir => Boilerplate.gen(dir)).taskValue,
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      // "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+      "org.scala-lang" % "scala-compiler" % scalaVersion.value,
       "org.typelevel" %% "cats-core" % "2.1.1",
       "com.chuusai" %% "shapeless" % "2.3.3" % "test",
       "org.typelevel" %% "cats-effect" % "2.1.3" % "test",
-      "com.lihaoyi" %% "pprint" % "0.5.6" % "test"
+      "com.lihaoyi" %% "pprint" % "0.5.6"
     ),
   )
 

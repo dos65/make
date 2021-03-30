@@ -86,9 +86,9 @@ class MakeTest extends FunSuite {
     ): Make[F, D[G, H]] =
       deps.mapN(D(_, _))
 
-    // import enableDebug._
+    import enableDebug._
 
-    val resolved = Make.of[IO, D[Option, IO]]
+    val resolved = Make.debugOf[IO, D[Option, IO]]
     val d = resolved.make.unsafeRunSync()
     assertEquals(d.b, C(A("42".some)))
     assertEquals(d.c.a.value.unsafeRunSync(), "42")
@@ -125,11 +125,11 @@ class MakeTest extends FunSuite {
       implicit dep: Dep[F, B]
     ): Make[F, C] = dep.value.map(C(_))
 
-    implicit def bMake[F[_]: Applicative](
-      implicit
-         deps: Dep[F, (Int, A[F])],
-    ): Make[F, B] = 
-      deps.value.mapFN((i, a) => a.value.map(v => B(v, i)))
+    // implicit def bMake[F[_]: Applicative](
+    //   implicit
+    //      deps: Dep[F, (Int, A[F])],
+    // ): Make[F, B] = 
+    //   deps.value.mapFN((i, a) => a.value.map(v => B(v, i)))
 
     import enableDebug._
 
@@ -151,6 +151,20 @@ class MakeTest extends FunSuite {
         Make.of[IO, B]
       """
     )
+  }
+
+  test("sample debug") {
+    case class A(i: Int)
+    object A {
+      //implicit def aMake[F[_]:Applicative](implicit iMake: Make[F, Int]):Make [F, A] = iMake.map(A(_))
+      implicit def aMake(implicit iMake: Make[IO, Int]):Make[IO, A] = iMake.map(A(_))
+    }
+    @autoMake
+    case class B(a: A)
+    implicit val intMake: Make[IO, Int] = Make.pure(1)
+
+    val make = Make.of[IO, B]
+    println(make.make.unsafeRunSync)
   }
 
 }

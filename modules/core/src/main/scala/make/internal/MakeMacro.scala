@@ -25,12 +25,15 @@ class MakeMacro(val c: whitebox.Context) {
     out match {
       case EmptyTree =>
         val st = extractInstanceSt(atpe.tpe, state.reverseTraces)
-        println(st)
+        println(s"ST: ${st}")
         val message = renderInstanceSt(st)
         c.abort(c.enclosingPosition, s"Make for ${atpe.tpe} not found\n" + message)
       case tree =>
         val message = s"Debug: OK!\n\tMake instance for ${atpe.tpe} exists.\n\nRemove debug usage."
         c.info(c.enclosingPosition, message, true)
+        // println("---???? FROM DEBUG ---- ")
+        // println(tree.toString().size)
+        // println(tree.toString().grouped(300).mkString("\n\t"))
         c.Expr[Make[F, A]](tree)
     }
   }

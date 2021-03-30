@@ -24,4 +24,5 @@ class TagTest extends FunSuite {
   def func3[A: Tag.TPTag]: Tag.TpeTag[List[A]] = Tag.TpeTag[List[A]]
   def func4[A, B](implicit tag: TpeTag[(A, B)]): Tag.TpeTag[(A, B)] = Tag.TpeTag[(A, B)]
 
+
 }
