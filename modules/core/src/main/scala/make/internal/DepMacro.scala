@@ -36,7 +36,7 @@ class DepMacro(val c: whitebox.Context) {
     }
     
     if (root) {
-      println(state.cache.mkString("\n"))
+      //println(state.cache.mkString("\n"))
       c.internal.removeAttachment[State](c.macroApplication)
 
       val clsName = TypeName(c.freshName("Dep"))
@@ -76,7 +76,7 @@ class DepMacro(val c: whitebox.Context) {
             }
             _root_.make.Dep.apply[${ftpe.tpe}, ${atpe.tpe}]((new $clsName).$primaryName)
         """
-      //pprint.pprintln(tree)
+      //pprint.pprintln(tree, 100, Int.MaxValue)
       c.Expr[Dep[F, A]](tree)
     } else {
       out
@@ -125,7 +125,7 @@ class DepMacro(val c: whitebox.Context) {
     ): Option[(TermName, Type)] = {
       from match {
         case (head, otpe) :: tl =>
-          if (sym == head && tpe =:= otpe){
+          if (sym == head && tpe == otpe){
             Some(to.head)
           } else findReplacement(sym, tpe, tl, to.tail)
         case Nil => None

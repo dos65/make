@@ -8,7 +8,6 @@ import cats.effect.IOApp
 import make._
 import make.syntax._
 import cats.Applicative
-import shapeless.Strict
 // import make.ce.resource._
 
 object ExampleCatsEffect extends IOApp {

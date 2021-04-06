@@ -5,11 +5,9 @@ import make.Make
 import make.Debug
 import scala.collection.mutable
 
-class MakeMacro(val c: whitebox.Context) {
+class MakeMacro(val ctx: whitebox.Context) extends DebugStateMacro(ctx){
 
   import c.universe._
-
-  val state = MacroState.getOrElseUpdate[DebugSt](c.universe, new DebugSt)
 
   def debug[F[_], A](implicit
     ftpe: WeakTypeTag[F[X] forSome { type X }],
@@ -19,13 +17,13 @@ class MakeMacro(val c: whitebox.Context) {
     val makeTc = weakTypeOf[Make[F, _]].typeConstructor
     val searchType = appliedType(makeTc, ftpe.tpe, atpe.tpe)
 
-    state.debug = true
+    debugState.debug = true
     val out = c.inferImplicitValue(searchType)
-    state.debug = false
+    debugState.debug = false
     out match {
       case EmptyTree =>
-        val st = extractInstanceSt(atpe.tpe, state.reverseTraces)
-        println(s"ST: ${st}")
+        val st = extractInstanceSt(atpe.tpe, debugState.reverseTraces)
+        //println(s"ST: ${st}")
         val message = renderInstanceSt(st)
         c.abort(c.enclosingPosition, s"Make for ${atpe.tpe} not found\n" + message)
       case tree =>
@@ -43,22 +41,22 @@ class MakeMacro(val c: whitebox.Context) {
     atpe: WeakTypeTag[A]
   ): c.Expr[Debug[Make[F, A]]] = {
 
-    if (!state.debug) c.abort(c.enclosingPosition, "debug is not enabled")
-    state.resolveCache.get(atpe.tpe) match {
+    if (!debugState.debug) c.abort(c.enclosingPosition, "debug is not enabled")
+    debugState.resolveCache.get(atpe.tpe) match {
       case Some(ResolveSt.InProgress) => c.abort(c.enclosingPosition, "skip")
       case Some(ResolveSt.Resolved(tree)) => c.abort(c.enclosingPosition, "skip")
       case None =>
         val makeTc = weakTypeOf[Make[F, _]].typeConstructor
         val makeTpe = appliedType(makeTc, ftpe.tpe, atpe.tpe)
-        state.stack.append(atpe.tpe)
-        val pos = state.stack.size
-        state.resolveCache.update(atpe.tpe, ResolveSt.InProgress)
+        debugState.stack.append(atpe.tpe)
+        val pos = debugState.stack.size
+        debugState.resolveCache.update(atpe.tpe, ResolveSt.InProgress)
         val tree = c.inferImplicitValue(makeTpe)
-        state.resolveCache.update(atpe.tpe, ResolveSt.Resolved(tree))
-        state.stack.remove(pos - 1)
+        debugState.resolveCache.update(atpe.tpe, ResolveSt.Resolved(tree))
+        debugState.stack.remove(pos - 1)
         tree match {
           case EmptyTree =>
-            state.stack.lastOption.foreach(state.registerFailedReason(atpe.tpe, _))
+            debugState.stack.lastOption.foreach(debugState.registerFailedReason(atpe.tpe, _))
         }
         c.abort(c.enclosingPosition, "skip")
       case _ => c.abort(c.enclosingPosition, "skip")
@@ -124,25 +122,4 @@ class MakeMacro(val c: whitebox.Context) {
     case class FailedTraces(tpe: Type, traces: List[FailedTrace]) extends InstanceSt
   }
 
-  sealed trait ResolveSt
-  object ResolveSt {
-    case object InProgress extends ResolveSt
-    case class Resolved(tree: Tree) extends ResolveSt
-  }
-
-  class DebugSt(
-    var debug: Boolean = false,
-    val stack: mutable.ListBuffer[Type] = mutable.ListBuffer.empty,
-    val resolveCache: mutable.HashMap[Type, ResolveSt] = mutable.HashMap.empty,
-    val reverseTraces: mutable.HashMap[Type, List[Type]] =
-      mutable.HashMap.empty
-  ) {
-
-    def registerFailedReason(targetTpe: Type, prev: Type): Unit = {
-      val curr = reverseTraces.getOrElse(prev, List.empty)
-      val next = targetTpe :: curr
-      reverseTraces.update(prev, next)
-    }
-
-  }
 }
