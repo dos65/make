@@ -15,12 +15,9 @@ final class Graph[F[_], A](
   targetId: Graph.Id
 )(implicit F: Monad[F]) {
 
-  def x: Map[Graph.Id, Graph.RawEntry[F]] = entries 
-
   def initEff: F[A] = {
     val order = initOrder
     val init = F.pure(Map.empty[Graph.Id, Any])
-    println(s"Enries: ${entries.mkString("\n")}")
 
     val rs = order.foldLeft(init) { case (rs, id) =>
       F.flatMap(rs)(depsMap => {
@@ -83,30 +80,32 @@ object Graph {
 
     type HandleOut = (List[Any] => F[Any], List[Id], List[Make[F, Any]])
 
-    def handleNode(v: Make[F, Any]): HandleOut = v match {
-      case Make.Value(v, tag) =>
-        ((_: List[Any]) => v(), List.empty, List.empty)
-      case Make.Bind(prev, f, tag) =>
-        val func = (in: List[Any]) => f(in(0))
-        val deps = List(Id.fromTag(prev.tag))
-        val other = List(prev)
-        (func, deps, other)
-      case Make.Ap(prev, op, tag) =>
-        val func =
-          (in: List[Any]) => {
-            val a = in(0)
-            val aToB = in(1).asInstanceOf[Any => Any]
-            Applicative[F].pure[Any](aToB(a))
-          }
-        val deps = List(
-          Id.fromTag(prev.tag),
-          Id.fromTag(op.tag)
-        )
-        val other = List(
-          prev,
-          op.asInstanceOf[Make[F, Any]]
-        )
-        (func, deps, other)
+    def handleNode(v: Make[F, Any]): HandleOut = {
+      v match {
+        case Make.Value(v, tag) =>
+          ((_: List[Any]) => v(), List.empty, List.empty)
+        case x @ Make.Bind(prev, f, tag) =>
+          val func = (in: List[Any]) => f(in(0))
+          val deps = List(Id.fromTag(prev.tag))
+          val other = List(prev)
+          (func, deps, other)
+        case Make.Ap(prev, op, tag) =>
+          val func =
+            (in: List[Any]) => {
+              val a = in(0)
+              val aToB = in(1).asInstanceOf[Any => Any]
+              Applicative[F].pure[Any](aToB(a))
+            }
+          val deps = List(
+            Id.fromTag(prev.tag),
+            Id.fromTag(op.tag)
+          )
+          val other = List(
+            prev,
+            op.asInstanceOf[Make[F, Any]]
+          )
+          (func, deps, other)
+      }
     }
 
     def handleMake(make: Make[F, Any]): (RawEntry[F], List[Make[F, Any]]) = {

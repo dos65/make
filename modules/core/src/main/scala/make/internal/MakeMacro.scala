@@ -5,7 +5,7 @@ import make.Make
 import make.Debug
 import scala.collection.mutable
 
-class MakeMacro(val ctx: whitebox.Context) extends DebugStateMacro(ctx){
+class MakeMacro(val ctx: whitebox.Context) extends DebugStateMacro(ctx) {
 
   import c.universe._
 
@@ -23,15 +23,11 @@ class MakeMacro(val ctx: whitebox.Context) extends DebugStateMacro(ctx){
     out match {
       case EmptyTree =>
         val st = extractInstanceSt(atpe.tpe, debugState.reverseTraces)
-        //println(s"ST: ${st}")
         val message = renderInstanceSt(st)
         c.abort(c.enclosingPosition, s"Make for ${atpe.tpe} not found\n" + message)
       case tree =>
         val message = s"Debug: OK!\n\tMake instance for ${atpe.tpe} exists.\n\nRemove debug usage."
         c.info(c.enclosingPosition, message, true)
-        // println("---???? FROM DEBUG ---- ")
-        // println(tree.toString().size)
-        // println(tree.toString().grouped(300).mkString("\n\t"))
         c.Expr[Make[F, A]](tree)
     }
   }

@@ -13,7 +13,7 @@ sealed abstract class Make[F[_], A] {
 
 object Make extends ContraMakeInstances with MakeTupleInstances with LowPrioMake {
 
-  def of[F[_], A](implicit m: Dep[F, A]): Make[F, A] = m.value
+  def of[F[_], A](implicit m: Make[F, A]): Make[F, A] = m
 
   final private[make] case class Value[F[_], A](
     v: () => F[A],

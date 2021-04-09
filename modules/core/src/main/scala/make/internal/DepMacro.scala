@@ -36,7 +36,6 @@ class DepMacro(val c: whitebox.Context) {
     }
     
     if (root) {
-      //println(state.cache.mkString("\n"))
       c.internal.removeAttachment[State](c.macroApplication)
 
       val clsName = TypeName(c.freshName("Dep"))
@@ -76,7 +75,6 @@ class DepMacro(val c: whitebox.Context) {
             }
             _root_.make.Dep.apply[${ftpe.tpe}, ${atpe.tpe}]((new $clsName).$primaryName)
         """
-      //pprint.pprintln(tree, 100, Int.MaxValue)
       c.Expr[Dep[F, A]](tree)
     } else {
       out

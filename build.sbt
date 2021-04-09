@@ -3,7 +3,7 @@ import xerial.sbt.Sonatype._
 lazy val commonSettings = Seq(
   scalaVersion := "2.12.12",
   organization := "io.github.dos65",
-  version := "0.0.35-SNAPSHOT",
+  version := "0.1.0-SNAPSHOT",
   crossScalaVersions := Seq("2.12.12", "2.13.3"),
   libraryDependencies ++= {
     if (is213(scalaVersion.value))
@@ -37,8 +37,6 @@ lazy val make = project.in(file("modules/core"))
     name := "make",
     scalacOptions ++= Seq(
       "-language:experimental.macros",
-      //"-Xprint:all",
-      //"-Ydebug"
     ),
     sourceGenerators in Compile += (sourceManaged in Compile).map(dir => Boilerplate.gen(dir)).taskValue,
     libraryDependencies ++= Seq(
@@ -47,7 +45,6 @@ lazy val make = project.in(file("modules/core"))
       "org.typelevel" %% "cats-core" % "2.1.1",
       "com.chuusai" %% "shapeless" % "2.3.3" % "test",
       "org.typelevel" %% "cats-effect" % "2.1.3" % "test",
-      "com.lihaoyi" %% "pprint" % "0.5.6"
     ),
   )
 
